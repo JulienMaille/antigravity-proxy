@@ -39,6 +39,8 @@ The proxy:
 4. Translates responses back to Google format with proper metadata for Antigravity Desktop
 5. Forwards non-chat requests (init, file ops, browser) to the real Google API — needs a valid Gemini API key for those
 
+Open **http://localhost:4000** in your browser for the dashboard — real-time logs, request history, config editor, model mapping, and stats.
+
 ## Requirements
 
 - **Windows** — Antigravity is Windows-only
@@ -65,8 +67,12 @@ antigravity/
 │   │   ├── config.ts         # Provider selection, API keys, base URLs
 │   │   ├── antigravity-context.ts  # Compact system prompt injected for external models
 │   │   ├── auth.ts           # API key validation
-│   │   ├── logger.ts         # File + console logging
+│   │   ├── logger.ts         # File + console logging + SSE event bus
+│   │   ├── dashboard.ts      # Dashboard REST API + SSE server
+│   │   ├── request-store.ts  # In-memory request history ring buffer
 │   │   └── types.ts          # Google-format type definitions
+│   ├── dashboard/
+│   │   └── index.html        # Dashboard SPA (0 build deps)
 │   ├── models.json           # Active model mapping (edit this!)
 │   ├── models.nvidia.json    # Defaults for NVIDIA
 │   ├── models.openrouter.json # Defaults for OpenRouter
@@ -87,6 +93,18 @@ These models have been tested successfully with the proxy:
 
 ### OpenRouter
 Any OpenAI-compatible model on OpenRouter should work. Test your preferred models by updating `proxy/models.json`.
+
+## Dashboard
+
+Once the proxy is running, open **http://localhost:4000** in your browser:
+
+- **Dashboard** — live stats (requests, tokens, tool calls, errors), provider info, environment overview
+- **Requests** — searchable request history with expandable detail view (model, tokens, content, tool calls, timing)
+- **Config** — edit provider, API keys, ports, and log level via UI (saves to `.env`)
+- **Models** — add/remove/edit model mappings in real time (saves to `models.json`)
+- **Live Log** — real-time log stream with level filter and auto-scroll
+
+All data updates in real time via SSE — no page refresh needed.
 
 ## Quick Links
 
