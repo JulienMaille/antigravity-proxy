@@ -30,6 +30,19 @@ class RequestStore extends EventEmitter {
     return this.requests;
   }
 
+  getDates(): { date: string; count: number }[] {
+    const map = new Map<string, number>();
+    for (const r of this.requests) {
+      const d = r.timestamp.slice(0, 10);
+      map.set(d, (map.get(d) || 0) + 1);
+    }
+    return Array.from(map.entries()).map(([date, count]) => ({ date, count })).sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  getByDate(date: string): RequestRecord[] {
+    return this.requests.filter(r => r.timestamp.slice(0, 10) === date);
+  }
+
   getStats(): { totalRequests: number; totalTokens: number; totalToolCalls: number; errors: number } {
     let totalTokens = 0;
     let totalToolCalls = 0;

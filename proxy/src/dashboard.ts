@@ -143,6 +143,18 @@ export function createDashboardHandler(): (req: http.IncomingMessage, res: http.
       return;
     }
 
+    // History by date
+    if (url.pathname === '/api/history/dates' && method === 'GET') {
+      jsonResp(res, requestStore.getDates());
+      return;
+    }
+
+    if (url.pathname === '/api/history' && method === 'GET') {
+      const date = (url.searchParams.get('date') || '').trim();
+      jsonResp(res, date ? requestStore.getByDate(date) : []);
+      return;
+    }
+
     if (url.pathname === '/api/logs' && method === 'GET') {
       try {
         const logs = getRecentLogs();

@@ -313,6 +313,20 @@ tbody tr:hover{background:var(--surface2);}
 }
 .filter-bar .count{font-size:12px;color:var(--text3);white-space:nowrap;}
 
+/* Pagination */
+.pagination{display:flex;align-items:center;justify-content:center;gap:6px;padding:16px 0 0}
+.pagination .page-btn{padding:5px 11px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;cursor:pointer;transition:all var(--transition);font-family:var(--font)}
+.pagination .page-btn:hover{background:var(--surface3);color:var(--text)}
+.pagination .page-btn.active{background:var(--accentDim);color:var(--accent2);border-color:var(--accentDim)}
+.pagination .page-btn:disabled{opacity:0.3;cursor:default}
+.pagination .page-info{font-size:12px;color:var(--text3);padding:0 8px}
+
+/* Date chip */
+.date-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;cursor:pointer;transition:all var(--transition)}
+.date-chip:hover{background:var(--surface3);color:var(--text)}
+.date-chip.active{background:var(--accentDim);color:var(--accent2);border-color:var(--accentDim)}
+.date-chip .dc-count{font-size:10px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--text3)}
+
 /* Toggle */
 .switch{position:relative;width:36px;height:20px;background:var(--surface3);border-radius:10px;cursor:pointer;transition:background var(--transition);flex-shrink:0;}
 .switch.on{background:var(--green);}
@@ -391,6 +405,10 @@ tbody tr:hover{background:var(--surface2);}
     <div class="nav-item" data-tab="log">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
       <span>Live Log</span>
+    </div>
+    <div class="nav-item" data-tab="history">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>History</span>
     </div>
   </nav>
   <div class="sidebar-footer">
@@ -506,6 +524,7 @@ tbody tr:hover{background:var(--surface2);}
           <p class="sub">Send a message in Antigravity to see request history appear here.</p>
         </div>
       </div>
+      <div class="pagination" id="reqPagination" style="display:none"></div>
     </section>
 
     <!-- Config -->
@@ -622,6 +641,27 @@ tbody tr:hover{background:var(--surface2);}
       </div>
     </section>
 
+    <!-- History -->
+    <section class="section" id="sec-history">
+      <div class="filter-bar">
+        <div class="search-wrap" style="max-width:200px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text3)"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <input type="date" id="historyDate" onchange="loadHistory()" style="width:100%;padding:7px 10px 7px 32px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--font);outline:none">
+        </div>
+        <span class="count" id="historyCount">Select a date</span>
+        <span style="flex:1"></span>
+        <div id="historyDateList" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <div id="historyContent">
+        <div class="empty-state">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <p>Select a date to see history</p>
+          <p class="sub">Pick a date from the calendar or click a date chip above.</p>
+        </div>
+      </div>
+      <div class="pagination" id="historyPagination" style="display:none"></div>
+    </section>
+
   </main>
 </div>
 
@@ -631,8 +671,9 @@ tbody tr:hover{background:var(--surface2);}
 const API = '';
 let eventSource = null;
 const logBuf = [];
-const pages = {dashboard:'Overview &amp; stats',requests:'Request history',config:'Settings &amp; credentials',models:'Model mappings',log:'Real-time proxy log'};
-let detailIdCounter = 0;
+const pages = {dashboard:'Overview & stats',requests:'Request history',config:'Settings & credentials',models:'Model mappings',log:'Real-time proxy log',history:'Browse by date'};
+const openDetails = new Set(); // tracks open detail rows by request.id
+const PER_PAGE = 25;
 
 // Navigation
 document.querySelectorAll('.nav-item').forEach(el => {
@@ -652,16 +693,17 @@ function refreshTab(tab) {
   if (tab === 'requests') renderRequests();
   else if (tab === 'models') loadModels();
   else if (tab === 'dashboard') reloadAll();
+  else if (tab === 'history') { loadDates(); loadHistory(); }
 }
 
-// Refresh button — refreshes current tab
+// Refresh button
 document.querySelector('.topbar-actions .btn').addEventListener('click', () => {
   const active = document.querySelector('.nav-item.active');
   if (active) refreshTab(active.dataset.tab);
-  reloadAll(); // always refresh sidebar stats
+  reloadAll();
 });
 
-function toast(msg, isError = false) {
+function toast(msg, isError) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast' + (isError ? ' error' : '');
@@ -686,18 +728,17 @@ async function reloadAll() {
     document.getElementById('statToolCalls').textContent = s.stats.totalToolCalls;
     document.getElementById('statErrors').textContent = s.stats.errors;
     document.getElementById('reqBadge').textContent = s.stats.totalRequests;
-    document.getElementById('dashProvider').innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block"></span> ' + (s.provider || '—');
-    document.getElementById('dashBaseUrl').textContent = s.baseUrl || '—';
+    document.getElementById('dashProvider').innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block"></span> ' + (s.provider||'—');
+    document.getElementById('dashBaseUrl').textContent = s.baseUrl||'—';
     document.getElementById('dashProxyPort').textContent = s.proxyPort;
     document.getElementById('dashApiPort').textContent = s.apiPort;
-    document.getElementById('providerText').textContent = s.provider || '—';
-    const dot = document.getElementById('statusDot');
-    dot.className = 'proxy-status-indicator ' + (s.configured ? 'online' : 'offline');
+    document.getElementById('providerText').textContent = s.provider||'—';
+    document.getElementById('statusDot').className = 'proxy-status-indicator '+(s.configured?'online':'offline');
     document.getElementById('statusText').textContent = s.configured ? 'Running' : 'Config needed';
     const et = document.getElementById('envTable');
     et.innerHTML = '';
     for (const [k, v] of Object.entries(s.env)) {
-      et.innerHTML += `<tr><td style="font-weight:500;white-space:nowrap;color:var(--text2);font-size:12px;width:200px">${k}</td><td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${v || '—'}</td></tr>`;
+      et.innerHTML += `<tr><td style="font-weight:500;white-space:nowrap;color:var(--text2);font-size:12px;width:200px">${k}</td><td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${v||'—'}</td></tr>`;
     }
     document.getElementById('cfgProvider').value = s.provider;
     document.getElementById('cfgProxyPort').value = s.proxyPort;
@@ -705,60 +746,133 @@ async function reloadAll() {
     document.getElementById('cfgLogLevel').value = s.logLevel;
     document.getElementById('nvKeyStatus').textContent = s.env.NVIDIA_API_KEY ? '✓ configured' : '○ not set';
     document.getElementById('orKeyStatus').textContent = s.env.OPENROUTER_API_KEY ? '✓ configured' : '○ not set';
-  } catch (e) { /* silent — retry on next interval/event */ }
+  } catch (e) {}
 }
 
-// Requests
+// ---- Paginated table renderer ----
+function renderPagination(container, page, total, perPage, onPage) {
+  const pages = Math.max(1, Math.ceil(total / perPage));
+  container.style.display = pages > 1 ? 'flex' : 'none';
+  let html = `<button class="page-btn" onclick="(${onPage})(${page-1})" ${page<=1?'disabled':''}>‹ Prev</button>`;
+  const start = Math.max(1, page-2), end = Math.min(pages, page+2);
+  if (start > 1) html += `<button class="page-btn" onclick="(${onPage})(1)">1</button>${start>2?'<span class="page-info">…</span>':''}`;
+  for (let i = start; i <= end; i++) html += `<button class="page-btn${i===page?' active':''}" onclick="(${onPage})(${i})">${i}</button>`;
+  if (end < pages) html += `${end<pages-1?'<span class="page-info">…</span>':''}<button class="page-btn" onclick="(${onPage})(${pages})">${pages}</button>`;
+  html += `<button class="page-btn" onclick="(${onPage})(${page+1})" ${page>=pages?'disabled':''}>Next ›</button>`;
+  html += `<span class="page-info">${(page-1)*perPage+1}–${Math.min(page*perPage,total)} of ${total}</span>`;
+  container.innerHTML = html;
+}
+
+function buildReqRows(list, page) {
+  const start = (page-1)*PER_PAGE;
+  const pageItems = list.slice(start, start+PER_PAGE);
+  let html = '', idx = start;
+  for (const r of pageItems) {
+    idx++;
+    const tc = (r.promptTokens||0)+(r.outputTokens||0);
+    const ts = new Date(r.timestamp).toLocaleTimeString();
+    const typeTag = `<span class="tag tag-${r.type}"><span>${r.type}</span></span>`;
+    const dirTag = `<span class="tag tag-${r.direction}" style="margin-left:4px;font-size:10px">${r.direction==='incoming'?'IN':'OUT'}</span>`;
+    const toolStr = r.toolCalls ? r.toolCalls.length+' tool(s)' : '';
+    const rid = esc(r.id);
+    const open = openDetails.has(r.id) ? '' : ' style="display:none"';
+    html += `<tr>
+      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${ts}</td>
+      <td>${typeTag}${dirTag}</td>
+      <td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.resolvedModel||r.model)}">${esc(r.model||'—')}</td>
+      <td style="font-size:12px;color:var(--text2)">${tc||'—'}</td>
+      <td><span class="td-wrap">${r.content ? esc(r.content.slice(0,90)) : (toolStr||'—')}</span></td>
+      <td><button class="btn btn-icon btn-ghost" onclick="toggleDetail('${rid}')" data-tooltip="Details">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 16 12 12 12 8"/></svg>
+      </button></td></tr>
+      <tr id="d-${rid}"${open}><td colspan="6"><div class="req-detail-inner">
+        <h4>Full Content</h4><pre>${esc(r.content||'—')}</pre>
+        ${r.toolCalls ? '<h4 style="margin-top:14px">Tool Calls</h4><pre>'+esc(JSON.stringify(r.toolCalls,null,2))+'</pre>' : ''}
+        ${r.error ? '<h4 style="margin-top:14px;color:var(--red)">Error</h4><pre style="color:var(--red)">'+esc(r.error)+'</pre>' : ''}
+        ${r.duration ? '<p style="font-size:12px;color:var(--text3);margin-top:10px">Duration: '+r.duration+'ms</p>' : ''}
+        <p style="font-size:11px;color:var(--text3);margin-top:8px">ID: ${esc(r.id)} · Resolved: ${esc(r.resolvedModel||r.model)}</p>
+      </div></td></tr>`;
+  }
+  return html;
+}
+
+// Detail toggle — uses persistent openDetails set
+function toggleDetail(id) {
+  const el = document.getElementById('d-'+id);
+  if (!el) return;
+  if (openDetails.has(id)) { openDetails.delete(id); el.style.display = 'none'; }
+  else { openDetails.add(id); el.style.display = 'table-row'; }
+}
+
+// ---- Requests tab ----
+let _reqPage = 1, _reqList = [];
+
 async function renderRequests() {
   try {
-    const reqs = await api('GET', '/api/requests');
-    const filter = (document.getElementById('reqFilter').value || '').toLowerCase();
+    _reqList = await api('GET', '/api/requests');
+    const filter = (document.getElementById('reqFilter').value||'').toLowerCase();
     const tf = document.getElementById('reqTypeFilter').value;
-    let f = reqs;
-    if (filter) f = f.filter(r => (r.model||'').toLowerCase().includes(filter) || (r.content||'').toLowerCase().includes(filter));
-    if (tf !== 'all') f = f.filter(r => r.type === tf);
-    document.getElementById('reqCount').textContent = f.length + ' request' + (f.length !== 1 ? 's' : '');
+    if (filter) _reqList = _reqList.filter(r => (r.model||'').toLowerCase().includes(filter)||(r.content||'').toLowerCase().includes(filter));
+    if (tf !== 'all') _reqList = _reqList.filter(r => r.type === tf);
+    if (_reqPage > Math.ceil(_reqList.length/PER_PAGE)) _reqPage = 1;
+    document.getElementById('reqCount').textContent = _reqList.length + ' request' + (_reqList.length!==1?'s':'');
     const c = document.getElementById('requestsContent');
-    if (f.length === 0) {
+    if (_reqList.length === 0) {
       c.innerHTML = '<div class="empty-state"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><p>No matching requests</p></div>';
+      document.getElementById('reqPagination').style.display = 'none';
       return;
     }
-    let html = '<div class="table-wrap"><table><thead><tr><th style="width:70px">Time</th><th style="width:70px">Type</th><th>Model</th><th style="width:70px">Tokens</th><th>Content</th><th style="width:44px"></th></tr></thead><tbody>';
-    f.forEach(r => {
-      const tc = (r.promptTokens||0)+(r.outputTokens||0);
-      const ts = new Date(r.timestamp).toLocaleTimeString();
-      const typeTag = `<span class="tag tag-${r.type}"><span>${r.type}</span></span>`;
-      const dirTag = `<span class="tag tag-${r.direction}" style="margin-left:4px;font-size:10px">${r.direction === 'incoming' ? 'IN' : 'OUT'}</span>`;
-      const toolStr = r.toolCalls ? r.toolCalls.length + ' tool(s)' : '';
-      const id = 'rd' + (++detailIdCounter);
-      html += `<tr>
-        <td style="font-size:11px;color:var(--text3);white-space:nowrap">${ts}</td>
-        <td>${typeTag}</td>
-        <td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.resolvedModel||r.model}">${r.model||'—'}</td>
-        <td style="font-size:12px;color:var(--text2)">${tc||'—'}</td>
-        <td><span class="td-wrap">${r.content ? esc(r.content.slice(0,90)) : (toolStr || '—')}</span></td>
-        <td><button class="btn btn-icon btn-ghost" onclick="toggleReqDetail('${id}')" data-tooltip="Details">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 16 12 12 12 8"/></svg>
-        </button></td></tr>
-        <tr id="${id}" style="display:none"><td colspan="6"><div class="req-detail-inner">
-          <h4>Full Content</h4>
-          <pre>${esc(r.content||'—')}</pre>
-          ${r.toolCalls ? '<h4 style="margin-top:14px">Tool Calls</h4><pre>' + esc(JSON.stringify(r.toolCalls,null,2)) + '</pre>' : ''}
-          ${r.error ? '<h4 style="margin-top:14px;color:var(--red)">Error</h4><pre style="color:var(--red)">' + esc(r.error) + '</pre>' : ''}
-          ${r.duration ? '<p style="font-size:12px;color:var(--text3);margin-top:10px">Duration: ' + r.duration + 'ms</p>' : ''}
-          <p style="font-size:11px;color:var(--text3);margin-top:8px">ID: ${r.id} · Resolved: ${r.resolvedModel||r.model}</p>
-        </div></td></tr>`;
-    });
-    html += '</tbody></table></div>';
-    c.innerHTML = html;
-  } catch (e) { /* silent */ }
+    c.innerHTML = '<div class="table-wrap"><table><thead><tr><th style="width:70px">Time</th><th style="width:70px">Type</th><th>Model</th><th style="width:70px">Tokens</th><th>Content</th><th style="width:44px"></th></tr></thead><tbody>' + buildReqRows(_reqList, _reqPage) + '</tbody></table></div>';
+    renderPagination(document.getElementById('reqPagination'), _reqPage, _reqList.length, PER_PAGE, 'goReqPage');
+  } catch (e) {}
+}
+function goReqPage(p) { _reqPage = p; renderRequests(); }
+
+async function clearRequests() { await api('DELETE','/api/requests'); openDetails.clear(); _reqPage = 1; renderRequests(); reloadAll(); toast('Requests cleared'); }
+
+// ---- History tab ----
+let _histDate = '', _histPage = 1, _histList = [];
+
+async function loadDates() {
+  try {
+    const dates = await api('GET', '/api/history/dates');
+    const container = document.getElementById('historyDateList');
+    const currentDate = document.getElementById('historyDate').value;
+    container.innerHTML = dates.map(d =>
+      `<span class="date-chip${d.date===currentDate?' active':''}" onclick="pickDate('${d.date}')">${d.date} <span class="dc-count">${d.count}</span></span>`
+    ).join('');
+    if (!currentDate && dates.length > 0) pickDate(dates[0].date);
+  } catch (e) {}
 }
 
-function toggleReqDetail(id) { const e = document.getElementById(id); if (e) e.style.display = e.style.display === 'none' ? 'table-row' : 'none'; }
+function pickDate(date) {
+  document.getElementById('historyDate').value = date;
+  document.querySelectorAll('.date-chip').forEach(c => c.classList.toggle('active', c.textContent.trim().startsWith(date)));
+  _histPage = 1;
+  loadHistory();
+}
 
-async function clearRequests() { await api('DELETE', '/api/requests'); renderRequests(); reloadAll(); toast('Requests cleared'); }
+async function loadHistory() {
+  try {
+    const date = document.getElementById('historyDate').value;
+    if (!date) return;
+    _histDate = date;
+    _histList = await api('GET', '/api/history?date='+encodeURIComponent(date));
+    if (_histPage > Math.ceil(_histList.length/PER_PAGE)) _histPage = 1;
+    document.getElementById('historyCount').textContent = _histList.length + ' request' + (_histList.length!==1?'s':'') + ' on ' + date;
+    const c = document.getElementById('historyContent');
+    if (_histList.length === 0) {
+      c.innerHTML = '<div class="empty-state"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><p>No requests on this date</p></div>';
+      document.getElementById('historyPagination').style.display = 'none';
+      return;
+    }
+    c.innerHTML = '<div class="table-wrap"><table><thead><tr><th style="width:70px">Time</th><th style="width:70px">Type</th><th>Model</th><th style="width:70px">Tokens</th><th>Content</th><th style="width:44px"></th></tr></thead><tbody>' + buildReqRows(_histList, _histPage) + '</tbody></table></div>';
+    renderPagination(document.getElementById('historyPagination'), _histPage, _histList.length, PER_PAGE, 'goHistPage');
+  } catch (e) {}
+}
+function goHistPage(p) { _histPage = p; loadHistory(); }
 
-// Config
+// ---- Config ----
 async function saveConfig() {
   const u = {
     PROVIDER: document.getElementById('cfgProvider').value,
@@ -769,23 +883,16 @@ async function saveConfig() {
     LOG_LEVEL: document.getElementById('cfgLogLevel').value,
   };
   Object.keys(u).forEach(k => { if (!u[k]) delete u[k]; });
-  try {
-    const r = await api('POST', '/api/config', u);
-    if (r.ok) { toast('Config saved. Restart proxy to apply.'); reloadAll(); }
-    else toast('Save failed: ' + r.error, true);
-  } catch (e) { toast('Save failed: ' + e.message, true); }
+  try { const r = await api('POST','/api/config',u); if (r.ok) { toast('Config saved. Restart proxy to apply.'); reloadAll(); } else toast('Save failed: '+r.error, true); }
+  catch (e) { toast('Save failed: '+e.message, true); }
 }
 
-// Models
+// ---- Models ----
 async function loadModels() {
-  try {
-    const m = await api('GET', '/api/models');
-    const tb = document.getElementById('modelsBody'); tb.innerHTML = '';
-    Object.entries(m).forEach(([k,v]) => addRow(k,v));
-  } catch (e) { /* silent */ }
+  try { const m = await api('GET','/api/models'); const tb = document.getElementById('modelsBody'); tb.innerHTML = ''; Object.entries(m).forEach(([k,v]) => addRow(k,v)); } catch (e) {}
 }
 function addModelRow() { addRow('',''); }
-function addRow(k, v) {
+function addRow(k,v) {
   const tr = document.createElement('tr');
   tr.innerHTML = `<td><input class="model-input" value="${esc(k)}" placeholder="e.g. gemini-2.5-pro"></td><td><input class="model-input" value="${esc(v)}" placeholder="e.g. deepseek-ai/deepseek-v4-flash"></td><td><button class="btn-icon" onclick="this.closest('tr').remove()" data-tooltip="Remove">✕</button></td>`;
   document.getElementById('modelsBody').appendChild(tr);
@@ -793,71 +900,52 @@ function addRow(k, v) {
 async function saveModels() {
   const models = {};
   document.querySelectorAll('#modelsBody tr').forEach(tr => {
-    const inp = tr.querySelectorAll('input');
-    const k = inp[0].value.trim(), v = inp[1].value.trim();
+    const inp = tr.querySelectorAll('input'); const k = inp[0].value.trim(), v = inp[1].value.trim();
     if (k && v) models[k] = v;
   });
-  try { const r = await api('POST', '/api/models', models); if (r.ok) toast('Models saved'); else toast('Save failed', true); }
-  catch(e) { toast('Save failed: ' + e.message, true); }
+  try { const r = await api('POST','/api/models',models); if (r.ok) toast('Models saved'); else toast('Save failed', true); } catch (e) { toast('Save failed: '+e.message, true); }
 }
 
-// Log
+// ---- Log ----
 function applyLogFilter() {
   const lvl = document.getElementById('logLevelFilter').value;
   const out = document.getElementById('logOutput'); out.innerHTML = '';
-  logBuf.forEach(e => { if (lvl === 'all' || e.level === lvl) appendLog(e, true); });
+  logBuf.forEach(e => { if (lvl==='all'||e.level===lvl) appendLog(e, true); });
 }
-function appendLog(e, skipScrollCheck) {
+function appendLog(e, skipScroll) {
   const out = document.getElementById('logOutput');
   const fl = document.getElementById('logLevelFilter').value;
-  if (fl !== 'all' && fl !== e.level) return;
+  if (fl!=='all'&&fl!==e.level) return;
   const d = document.createElement('div'); d.className = 'log-e';
   d.innerHTML = `<span class="ts">${(e.timestamp||'').slice(11,19)}</span><span class="lvl ${e.level.toUpperCase()}">${e.level.toUpperCase()}</span>${esc(e.msg)}`;
   out.appendChild(d);
-  if (skipScrollCheck || document.getElementById('logAutoScroll').checked) {
-    requestAnimationFrame(() => { out.scrollTop = out.scrollHeight; });
-  }
+  if (skipScroll || document.getElementById('logAutoScroll').checked) requestAnimationFrame(() => { out.scrollTop = out.scrollHeight; });
 }
-function clearLogView() {
-  document.getElementById('logOutput').innerHTML = '';
-  logBuf.length = 0;
-  api('DELETE', '/api/logs').catch(() => {});
-}
+function clearLogView() { document.getElementById('logOutput').innerHTML=''; logBuf.length=0; api('DELETE','/api/logs').catch(()=>{}); }
 
-// SSE
+// ---- SSE ----
 function connectSSE() {
   if (eventSource) eventSource.close();
-  eventSource = new EventSource(API + '/api/events');
+  eventSource = new EventSource(API+'/api/events');
   eventSource.addEventListener('request', () => {
     reloadAll();
-    if (document.getElementById('sec-requests').classList.contains('active')) renderRequests();
+    const tab = document.querySelector('.nav-item.active')?.dataset.tab;
+    if (tab === 'requests') renderRequests();
+    if (tab === 'history') { loadDates(); loadHistory(); }
   });
   eventSource.addEventListener('log', e => {
-    try {
-      const d = JSON.parse(e.data);
-      logBuf.push(d);
-      if (logBuf.length > 1000) logBuf.shift();
-      appendLog(d);
-    } catch {}
+    try { const d = JSON.parse(e.data); logBuf.push(d); if (logBuf.length>1000) logBuf.shift(); appendLog(d); } catch {}
   });
-  eventSource.addEventListener('cleared', () => { logBuf.length = 0; document.getElementById('logOutput').innerHTML = ''; });
+  eventSource.addEventListener('cleared', () => { logBuf.length=0; document.getElementById('logOutput').innerHTML=''; });
   eventSource.onerror = () => { setTimeout(connectSSE, 3000); };
 }
 
 function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// Init
+// ---- Init ----
+[document.getElementById('reqPagination'), document.getElementById('historyPagination')].forEach(el => { if (el) el.style.display='none'; });
 reloadAll(); renderRequests(); loadModels(); connectSSE();
-
-// Load historical logs on init
-api('GET', '/api/logs').then(logs => {
-  logs.forEach(e => { logBuf.push(e); appendLog(e, true); });
-}).catch(() => {});
-
-// Auto-refresh requests tab every 3s
-setInterval(() => {
-  if (document.getElementById('sec-requests').classList.contains('active')) renderRequests();
-}, 3000);
+api('GET','/api/logs').then(logs => { logs.forEach(e => { logBuf.push(e); appendLog(e, true); }); }).catch(()=>{});
 </script>
 </body>
 </html>
