@@ -1,6 +1,10 @@
-# Antigravity Proxy
+<p align="center">
+  <img src="https://antigravity.google/assets/image/brand/antigravity-icon__full-color.png" alt="Antigravity" width="64" height="64">
+</p>
 
-Use **NVIDIA** or **OpenRouter** models with **Antigravity 2.0** — no Gemini subscription required.
+<h1 align="center">Antigravity Proxy</h1>
+
+<p align="center">Use <strong>NVIDIA</strong> or <strong>OpenRouter</strong> models with <strong>Antigravity 2.0</strong> — no Gemini subscription required.</p>
 
 The proxy intercepts Antigravity's Google Gemini API calls and translates them to OpenAI-format requests for NVIDIA or OpenRouter. Tool calls, streaming, thinking/reasoning — all work transparently.
 
