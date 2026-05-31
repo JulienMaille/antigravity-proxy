@@ -72,14 +72,17 @@ async function parseToolArgs(raw: string): Promise<Record<string, unknown>> {
   try { return JSON.parse(raw); } catch { return {}; }
 }
 
-function stripUnknownArgs(args: Record<string, unknown>, toolName: string, tools: Record<string, any> | undefined): Record<string, unknown> {
-  if (!tools || !tools[toolName]?.parameters?.properties) return args;
-  const validKeys = Object.keys(tools[toolName].parameters.properties);
-  const filtered: Record<string, unknown> = {};
-  for (const key of validKeys) {
-    if (key in args) filtered[key] = args[key];
+const ANTIGRAVITY_INTERNAL_PARAMS = new Set([
+  'toolAction', 'toolSummary', 'Summary', 'Action', 'ToolAction', 'ToolSummary',
+  'Action', 'Summary',
+]);
+
+function stripUnknownArgs(args: Record<string, unknown>, _toolName: string, _tools: Record<string, any> | undefined): Record<string, unknown> {
+  const cleaned: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(args)) {
+    if (!ANTIGRAVITY_INTERNAL_PARAMS.has(key)) cleaned[key] = value;
   }
-  return Object.keys(filtered).length > 0 ? filtered : args;
+  return Object.keys(cleaned).length > 0 ? cleaned : args;
 }
 
 export async function* streamResponse(

@@ -37,11 +37,25 @@ Antigravity parses your structured tool_calls and text responses:
 
 Chain multiple tool calls when needed — explore, then read, then analyze.
 
+## Exploration Protocol (Critical for Code Review)
+
+When asked to review a codebase, follow this exact sequence - never skip steps or loop:
+
+1. **list_dir root** → See project structure (src/, agent/, proxy/, etc.)
+2. **list_dir subdirectories** → Drill into src/, agent/, proxy/, docs/ etc.
+3. **view_file source files** → Read actual code, configs, README
+4. **grep_search patterns** → Find specific implementations
+5. **Write review** → Create artifact with analysis
+
+CRITICAL: After EACH tool call, read the result and decide what to explore NEXT.
+Do NOT re-list the same directory. If you see subdirectories, list them.
+If you see files, view them. Always move forward - never repeat.
+
 ## Workflow Patterns
 
-For code review tasks: explore directory → read files → analyze → write review artifact.
+For code review: list root → list subdirs → view files → grep → write artifact.
 For implementation: understand requirements → propose plan → get approval → execute.
-For research: search web → read results → summarize → write research artifact.
+For research: search web → read results → summarize → write artifact.
 
 Always provide context about what you're doing and why. Antigravity tracks your reasoning.`;
   },
