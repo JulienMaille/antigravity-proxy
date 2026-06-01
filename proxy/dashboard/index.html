@@ -1003,9 +1003,9 @@ async function reloadAll() {
     document.getElementById('cfgLogLevel').value = s.logLevel;
     document.getElementById('cfgRetries').value = s.retries||10;
     document.getElementById('cfgBackoffMs').value = s.backoffMs||1000;
-    document.getElementById('cfgRateGlobal').value = s.rateLimitGlobal||60;
-    document.getElementById('cfgRateProvider').value = s.rateLimitProvider||30;
-    document.getElementById('cfgRateWindow').value = s.rateLimitWindow||60000;
+    document.getElementById('cfgRateGlobal').value = s.rateLimitGlobal ?? 60;
+    document.getElementById('cfgRateProvider').value = s.rateLimitProvider ?? 30;
+    document.getElementById('cfgRateWindow').value = s.rateLimitWindow ?? 60000;
     document.getElementById('nvKeyStatus').textContent = s.env.NVIDIA_API_KEY ? '✓ configured' : '○ not set';
     document.getElementById('orKeyStatus').textContent = s.env.OPENROUTER_API_KEY ? '✓ configured' : '○ not set';
     document.getElementById('oaiKeyStatus').textContent = s.env.OPENAI_API_KEY ? '✓ configured' : '○ not set';
