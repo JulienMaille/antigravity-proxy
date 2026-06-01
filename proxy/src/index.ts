@@ -259,31 +259,52 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
       } else if (ctype === 'tool-call') {
         toolCalls.push({ name: (chunk as any).name, args: (chunk as any).args });
       }
+      // Stream progress to client — writes current accumulated text immediately
+      const parts: any[] = [];
+      if (thoughtText) parts.push({ thought: true, text: thoughtText });
+      if (fullText) parts.push({ text: fullText });
+      if (parts.length > 0) {
+        const outTokens = estTokens(fullText + thoughtText);
+        res.write(`data: ${JSON.stringify({
+          response: {
+            candidates: [{
+              index: 0, content: { role: 'model', parts },
+              safetyRatings: SAFETY_RATINGS, groundingMetadata: GROUNDING_METADATA,
+            }],
+            usageMetadata: { promptTokenCount: promptTokens, candidatesTokenCount: outTokens, totalTokenCount: promptTokens + outTokens },
+            modelVersion: `${projectPath}/publishers/${config.provider}/models/${model}`,
+            responseId,
+          }, traceId, metadata: {},
+        })}\n\n`, 'utf-8');
+      }
     }
 
     const duration = Date.now() - genStart;
     const outputTokens = estTokens(fullText + thoughtText);
     const cost = usedProvider ? calculateCost(usedProvider, usedModel || model, promptTokens, outputTokens) : 0;
 
-    if (toolCalls.length > 0) {
-      if (fullText) {
-        res.write(buildGoogleEvent({
-          modelVersion: model, projectPath, responseId, traceId, promptTokens,
-          text: fullText, thoughtText,
-        }), 'utf-8');
-      }
-      res.write(buildGoogleEvent({
-        modelVersion: model, projectPath, responseId, traceId, promptTokens,
-        functionCalls: toolCalls,
-        finishReason: 'STOP',
-      }), 'utf-8');
-    } else {
-      res.write(buildGoogleEvent({
-        modelVersion: model, projectPath, responseId, traceId, promptTokens,
-        text: fullText, thoughtText,
-        finishReason: 'STOP',
-      }), 'utf-8');
+    // Send final event with finishReason + tool calls if any
+    const finalParts: any[] = [];
+    if (thoughtText) finalParts.push({ thought: true, text: thoughtText });
+    const hasToolCalls = toolCalls.length > 0;
+    if (hasToolCalls) {
+      for (const tc of toolCalls) finalParts.push({ functionCall: { name: tc.name, args: tc.args } });
+    } else if (fullText) {
+      finalParts.push({ text: fullText });
     }
+    const candidate: any = {
+      index: 0, content: { role: 'model', parts: finalParts },
+      safetyRatings: SAFETY_RATINGS, groundingMetadata: GROUNDING_METADATA,
+      finishReason: 'STOP',
+    };
+    res.write(`data: ${JSON.stringify({
+      response: {
+        candidates: [candidate],
+        usageMetadata: { promptTokenCount: promptTokens, candidatesTokenCount: outputTokens, totalTokenCount: promptTokens + outputTokens },
+        modelVersion: `${projectPath}/publishers/${config.provider}/models/${model}`,
+        responseId,
+      }, traceId, metadata: {},
+    })}\n\n`, 'utf-8');
     res.end();
 
     if (toolCalls.length > 0) {
