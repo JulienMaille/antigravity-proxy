@@ -9,6 +9,8 @@ import { requestStore } from './request-store.js';
 import { reloadRouter } from './engine.js';
 import * as db from './db.js';
 import { calculateCost, getAllPricing, savePricing, reload as reloadPricing } from './pricing.js';
+import { setRateLimitConfig, getRateLimitConfig, getRateLimitStats, resetRateLimits } from './rate-limiter.js';
+import { getBlocklist, saveBlocklist, reload as reloadBlocklist } from './blocklist.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dashboardHtml = path.resolve(__dirname, '..', 'dashboard', 'index.html');
@@ -197,6 +199,9 @@ export function createDashboardHandler(): (req: http.IncomingMessage, res: http.
         logLevel: config.logLevel,
         retries: config.retries,
         backoffMs: config.backoffMs,
+        rateLimitGlobal: config.rateLimitGlobal,
+        rateLimitProvider: config.rateLimitProvider,
+        rateLimitWindow: config.rateLimitWindow,
         providerPriority: config.providerPriority,
         providers: config.providers.map(p => ({ id: p.id, priority: p.priority, hasKey: !!p.apiKey, enabled: p.enabled })),
         env: { PROVIDER: env.PROVIDER, LOG_LEVEL: env.LOG_LEVEL, PROXY_PORT: env.PROXY_PORT, API_PORT: env.API_PORT, PROVIDER_PRIORITY: env.PROVIDER_PRIORITY, PROXY_RETRIES: env.PROXY_RETRIES, PROXY_BACKOFF_MS: env.PROXY_BACKOFF_MS, NVIDIA_API_KEY: maskKey(env.NVIDIA_API_KEY), OPENROUTER_API_KEY: maskKey(env.OPENROUTER_API_KEY), ANTHROPIC_API_KEY: maskKey(env.ANTHROPIC_API_KEY), OPENAI_API_KEY: maskKey(env.OPENAI_API_KEY), GROQ_API_KEY: maskKey(env.GROQ_API_KEY), GOOGLE_API_KEY: maskKey(env.GOOGLE_API_KEY) },
@@ -219,6 +224,7 @@ export function createDashboardHandler(): (req: http.IncomingMessage, res: http.
           if (writeEnv(updates)) {
             config.reload();
             reloadRouter();
+            setRateLimitConfig({ globalMax: config.rateLimitGlobal, providerMax: config.rateLimitProvider, windowMs: config.rateLimitWindow });
             jsonResp(res, { ok: true });
           } else jsonResp(res, { ok: false, error: 'write failed' }, 500);
         } catch (e: any) { jsonResp(res, { ok: false, error: e.message }, 400); }
@@ -434,6 +440,47 @@ export function createDashboardHandler(): (req: http.IncomingMessage, res: http.
         requestStore.off('request', onRequest);
         requestStore.off('cleared', onClear);
         clearInterval(sent);
+      });
+      return;
+    }
+
+    // Rate limit config
+    if (url.pathname === '/api/rate-limit' && method === 'GET') {
+      jsonResp(res, { config: getRateLimitConfig(), stats: getRateLimitStats() });
+      return;
+    }
+    if (url.pathname === '/api/rate-limit' && method === 'POST') {
+      let body = '';
+      req.on('data', (c) => body += c);
+      req.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          setRateLimitConfig({ globalMax: data.globalMax, providerMax: data.providerMax, windowMs: data.windowMs });
+          jsonResp(res, { ok: true });
+        } catch (e: any) { jsonResp(res, { ok: false, error: e.message }, 400); }
+      });
+      return;
+    }
+    if (url.pathname === '/api/rate-limit/reset' && method === 'POST') {
+      resetRateLimits();
+      jsonResp(res, { ok: true });
+      return;
+    }
+
+    // Blocklist
+    if (url.pathname === '/api/blocklist' && method === 'GET') {
+      jsonResp(res, getBlocklist());
+      return;
+    }
+    if (url.pathname === '/api/blocklist' && method === 'POST') {
+      let body = '';
+      req.on('data', (c) => body += c);
+      req.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          if (saveBlocklist(data)) { reloadBlocklist(); jsonResp(res, { ok: true }); }
+          else jsonResp(res, { ok: false, error: 'write failed' }, 500);
+        } catch (e: any) { jsonResp(res, { ok: false, error: e.message }, 400); }
       });
       return;
     }

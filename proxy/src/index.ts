@@ -14,6 +14,8 @@ import { createDashboardHandler } from './dashboard.js';
 import * as db from './db.js';
 import { calculateCost } from './pricing.js';
 import { httpPool } from './http-pool.js';
+import { checkRateLimit, recordRequest, setRateLimitConfig, resetRateLimits } from './rate-limiter.js';
+import { checkBlocked } from './blocklist.js';
 import type { Content, Tool, GenerationConfig } from './types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -194,6 +196,24 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
   const tools: Tool[] = inner.tools || [];
   const genConfig: GenerationConfig = inner.generationConfig;
 
+  // Check blocklist before processing
+  const blockCheck = checkBlocked(config.provider, model);
+  if (blockCheck.blocked) {
+    logger.warn(`BLOCKED: ${model} — ${blockCheck.reason}`);
+    res.writeHead(403, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ error: { message: `Request blocked: ${blockCheck.reason}`, code: 403 } }));
+    return;
+  }
+
+  // Check global rate limit
+  const rateCheck = checkRateLimit();
+  if (!rateCheck.allowed) {
+    logger.warn(`RATE LIMITED: global limit exceeded`);
+    res.writeHead(429, { 'content-type': 'application/json', 'retry-after': String(rateCheck.retryAfter) });
+    res.end(JSON.stringify({ error: { message: `Rate limit exceeded. Retry after ${rateCheck.retryAfter}s`, code: 429 } }));
+    return;
+  }
+
   // Strip massive inline context and inject agent-context.md reference
   const contents = stripInlineContext(inner.contents || []);
   const systemInstruction = stripSystemContext(inner.system_instruction?.parts?.[0]?.text || '');
@@ -292,6 +312,7 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
     const duration = Date.now() - genStart;
     const outputTokens = estTokens(fullText + thoughtText);
     const cost = usedProvider ? calculateCost(usedProvider, usedModel || model, promptTokens, outputTokens) : 0;
+    recordRequest(usedProvider);
 
     // Send final event with finishReason and metadata (no text — already streamed incrementally)
     const hasToolCalls = toolCalls.length > 0;
@@ -450,6 +471,7 @@ async function handleTlsRequest(req: http2.Http2ServerRequest, res: http2.Http2S
 // Main
 async function main(): Promise<void> {
   db.init();
+  setRateLimitConfig({ globalMax: config.rateLimitGlobal, providerMax: config.rateLimitProvider, windowMs: config.rateLimitWindow });
   logger.info(`=== Antigravity Proxy (${config.provider}) ===`);
 
   if (!validateApiKey()) process.exit(1);
