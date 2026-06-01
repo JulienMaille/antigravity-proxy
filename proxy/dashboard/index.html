@@ -554,17 +554,17 @@ tbody tr:hover{background:var(--surface2);}
           API Keys
         </h3>
         <div class="form-group">
-          <label><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openrouter.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;border-radius:2px" onerror="this.style.display='none'">OpenRouter API Key <span id="orKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
+          <label><span style="display:inline-block;width:14px;height:14px;mask-image:url(https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openrouter.svg);-webkit-mask-image:url(https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openrouter.svg);mask-size:contain;-webkit-mask-size:contain;background:#84e;vertical-align:middle;margin-right:6px"></span>OpenRouter API Key <span id="orKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
           <input type="password" id="cfgOpenrouterKey" placeholder="sk-or-v1-...">
           <div class="hint">From <span style="color:var(--accent2)">openrouter.ai/keys</span></div>
         </div>
         <div class="form-group">
-          <label><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/nvidia.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;border-radius:2px" onerror="this.style.display='none'">NVIDIA API Key <span id="nvKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
+          <label><span style="display:inline-block;width:14px;height:14px;mask-image:url(https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/nvidia.svg);-webkit-mask-image:url(https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/nvidia.svg);mask-size:contain;-webkit-mask-size:contain;background:#4b8;vertical-align:middle;margin-right:6px"></span>NVIDIA API Key <span id="nvKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
           <input type="password" id="cfgNvidiaKey" placeholder="nvapi-...">
           <div class="hint">From <span style="color:var(--accent2)">build.nvidia.com</span></div>
         </div>
         <div class="form-group">
-          <label><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openai.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;border-radius:2px" onerror="this.style.display='none'">OpenAI API Key <span id="oaiKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
+          <label><span style="display:inline-block;width:14px;height:14px;mask-image:url(https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openai.svg);-webkit-mask-image:url(https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openai.svg);mask-size:contain;-webkit-mask-size:contain;background:#090;vertical-align:middle;margin-right:6px"></span>OpenAI API Key <span id="oaiKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
           <input type="password" id="cfgOpenaiKey" placeholder="sk-...">
           <div class="hint">From <span style="color:var(--accent2)">platform.openai.com/api-keys</span></div>
         </div>
@@ -574,12 +574,12 @@ tbody tr:hover{background:var(--surface2);}
           <div class="hint">From <span style="color:var(--accent2)">console.groq.com/keys</span></div>
         </div>
         <div class="form-group">
-          <label><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/anthropic.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;border-radius:2px" onerror="this.style.display='none'">Anthropic API Key <span id="anthKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
+          <label><span style="display:inline-block;width:14px;height:14px;mask-image:url(https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/anthropic.svg);-webkit-mask-image:url(https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/anthropic.svg);mask-size:contain;-webkit-mask-size:contain;background:#e48;vertical-align:middle;margin-right:6px"></span>Anthropic API Key <span id="anthKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
           <input type="password" id="cfgAnthropicKey" placeholder="sk-ant-...">
           <div class="hint">From <span style="color:var(--accent2)">console.anthropic.com/settings/keys</span></div>
         </div>
         <div class="form-group">
-          <label><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/googlegemini.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;border-radius:2px" onerror="this.style.display='none'">Google API Key <span id="googleKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
+          <label><span style="display:inline-block;width:14px;height:14px;mask-image:url(https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/googlegemini.svg);-webkit-mask-image:url(https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/googlegemini.svg);mask-size:contain;-webkit-mask-size:contain;background:#48e;vertical-align:middle;margin-right:6px"></span>Google API Key <span id="googleKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
           <input type="password" id="cfgGoogleKey" placeholder="AIza...">
           <div class="hint">From <span style="color:var(--accent2)">aistudio.google.com/apikey</span></div>
         </div>
@@ -767,12 +767,12 @@ async function reloadAll() {
     document.getElementById('statErrors').textContent = s.stats.errors;
     document.getElementById('reqBadge').textContent = s.stats.totalRequests;
     const dm = PROVIDER_META[s.provider] || {};
-    document.getElementById('dashProvider').innerHTML = (dm.logo?'<img src="'+dm.logo+'" style="width:16px;height:16px;border-radius:3px;vertical-align:middle;margin-right:6px" onerror="this.style.display=\'none\'">':'') + '<span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px"></span> ' + (s.provider||'—');
+    document.getElementById('dashProvider').innerHTML = (dm.logo?logoHtml(dm,16):'')+'<span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px"></span> ' + (s.provider||'—');
     document.getElementById('dashBaseUrl').textContent = s.baseUrl||'—';
     document.getElementById('dashProxyPort').textContent = s.proxyPort;
     document.getElementById('dashApiPort').textContent = s.apiPort;
     const pfm = PROVIDER_META[s.provider] || {};
-    document.getElementById('providerText').innerHTML = (pfm.logo?'<img src="'+pfm.logo+'" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;border-radius:2px" onerror="this.style.display=\'none\'">':'') + (s.provider||'—');
+    document.getElementById('providerText').innerHTML = (pfm.logo?logoHtml(pfm,14):'')+(s.provider||'—');
     document.getElementById('statusDot').className = 'proxy-status-indicator '+(s.configured?'online':'offline');
     document.getElementById('statusText').textContent = s.configured ? 'Running' : 'Config needed';
     const et = document.getElementById('envTable');
@@ -1076,16 +1076,25 @@ async function deleteSession(file) {
 
 // ---- Config ----
 const PROVIDER_META = {
-  openrouter: { label: 'OpenRouter', color: '#84e', desc: 'Broad model selection', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openrouter.svg' },
-  nvidia:     { label: 'NVIDIA',     color: '#4b8', desc: 'NVIDIA NIM API', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/nvidia.svg' },
-  openai:     { label: 'OpenAI',     color: '#090', desc: 'Direct OpenAI API', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openai.svg' },
+  openrouter: { label: 'OpenRouter', color: '#84e', desc: 'Broad model selection', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openrouter.svg', logoMask: true },
+  nvidia:     { label: 'NVIDIA',     color: '#4b8', desc: 'NVIDIA NIM API', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/nvidia.svg', logoMask: true },
+  openai:     { label: 'OpenAI',     color: '#090', desc: 'Direct OpenAI API', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openai.svg', logoMask: true },
   groq:       { label: 'Groq',       color: '#e80', desc: 'Groq LPU inference', logo: 'https://www.groq.com/favicon.svg' },
-  anthropic:  { label: 'Anthropic',  color: '#e48', desc: 'Claude models API', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/anthropic.svg' },
-  google:     { label: 'Google',     color: '#48e', desc: 'Gemini models API', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/googlegemini.svg' },
-  ollama:     { label: 'Ollama',     color: '#888', desc: 'Local: localhost:11434', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/ollama.svg' },
-  vllm:       { label: 'vLLM',       color: '#888', desc: 'Local: localhost:8000', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/vllm.svg' },
-  lmstudio:   { label: 'LM Studio',  color: '#888', desc: 'Local: localhost:1234', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/lmstudio.svg' },
+  anthropic:  { label: 'Anthropic',  color: '#e48', desc: 'Claude models API', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/anthropic.svg', logoMask: true },
+  google:     { label: 'Google',     color: '#48e', desc: 'Gemini models API', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/googlegemini.svg', logoMask: true },
+  ollama:     { label: 'Ollama',     color: '#888', desc: 'Local: localhost:11434', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/ollama.svg', logoMask: true },
+  vllm:       { label: 'vLLM',       color: '#888', desc: 'Local: localhost:8000', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/vllm.svg', logoMask: true },
+  lmstudio:   { label: 'LM Studio',  color: '#888', desc: 'Local: localhost:1234', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/lmstudio.svg', logoMask: true },
 };
+
+function logoHtml(meta, size) {
+  if (!meta || !meta.logo) return '';
+  const s = size || 16;
+  if (meta.logoMask) {
+    return '<span style="display:inline-block;width:'+s+'px;height:'+s+'px;mask-image:url('+meta.logo+');-webkit-mask-image:url('+meta.logo+');mask-size:contain;-webkit-mask-size:contain;background:'+meta.color+';flex-shrink:0;vertical-align:middle"></span>';
+  }
+  return '<img src="'+meta.logo+'" style="width:'+s+'px;height:'+s+'px;border-radius:2px;flex-shrink:0;vertical-align:middle" onerror="this.style.display=\'none\'">';
+}
 
 function renderProviderPriority(priority, providers) {
   const container = document.getElementById('providerPriorityList');
@@ -1095,7 +1104,7 @@ function renderProviderPriority(priority, providers) {
     const keyStatus = hasKey(id) ? '✓' : '○';
     return '<div class="prio-item" data-provider="'+id+'" draggable="true" style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border-radius:6px;cursor:grab;font-size:13px">' +
       '<span style="color:var(--text3);font-size:11px;width:16px">'+(i+1)+'</span>' +
-      (meta.logo?'<img src="'+meta.logo+'" style="width:16px;height:16px;border-radius:3px;flex-shrink:0" onerror="this.style.display=\'none\'">':'<span style="width:8px;height:8px;border-radius:50%;background:'+meta.color+';flex-shrink:0"></span>') +
+      (meta.logo?logoHtml(meta,16):'<span style="width:8px;height:8px;border-radius:50%;background:'+meta.color+';flex-shrink:0"></span>') +
       '<span style="flex:1;color:var(--text1);font-weight:500">'+meta.label+'</span>' +
       '<span style="color:'+(hasKey(id)?'var(--green)':'var(--text3)')+';font-size:11px">'+keyStatus+'</span>' +
       '<span style="color:var(--text3);font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+meta.desc+'</span>' +
@@ -1134,14 +1143,17 @@ function removeProviderPriority(id) {
 }
 
 function showAddProviderModal(currentPriority, currentProviders) {
+  const existing = document.querySelector('.provider-picker');
+  if (existing) existing.remove();
   const ids = Object.keys(PROVIDER_META).filter(id => !currentPriority.includes(id));
   if (ids.length === 0) { toast('All providers already in list'); return; }
   const picker = document.createElement('div');
+  picker.className = 'provider-picker';
   picker.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;padding:4px';
   picker.innerHTML = ids.map(id => {
     const meta = PROVIDER_META[id];
     return '<button class="btn btn-sm" data-provider="'+id+'" style="display:flex;align-items:center;gap:4px;font-size:12px">' +
-      (meta.logo?'<img src="'+meta.logo+'" style="width:14px;height:14px;border-radius:2px" onerror="this.style.display=\'none\'">':'<span style="width:6px;height:6px;border-radius:50%;background:'+meta.color+'"></span>')+' '+meta.label +
+      (meta.logo?logoHtml(meta,14):'<span style="width:6px;height:6px;border-radius:50%;background:'+meta.color+'"></span>')+' '+meta.label +
     '</button>';
   }).join('');
   picker.querySelectorAll('button').forEach(btn => {
@@ -1215,33 +1227,90 @@ async function loadModels() {
   } catch (e) {}
 }
 function addModelRow() { addRow('','',''); }
+
+function createProviderSelect(selected, onChange) {
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:relative;width:100%';
+  wrapper.className = 'psel-wrap';
+
+  const sel = document.createElement('select');
+  sel.style.cssText = 'position:absolute;opacity:0;width:0;height:0;pointer-events:none';
+  PROVIDER_OPTIONS.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.value; opt.textContent = o.label;
+    if (o.value === selected) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  wrapper.appendChild(sel);
+
+  const cur = PROVIDER_OPTIONS.find(o => o.value === selected) || PROVIDER_OPTIONS[0];
+  const trigger = document.createElement('div');
+  trigger.className = 'psel-trigger';
+  trigger.style.cssText = 'display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:12px;cursor:pointer;outline:none;user-select:none';
+  const curMeta = cur.value ? PROVIDER_META[cur.value] : null;
+  trigger.innerHTML = (curMeta?logoHtml(curMeta,14):'')+'<span style="flex:1">'+cur.label+'</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;color:var(--text3)"><polyline points="6 9 12 15 18 9"/></svg>';
+  wrapper.appendChild(trigger);
+
+  const menu = document.createElement('div');
+  menu.className = 'psel-menu';
+  menu.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;z-index:200;display:none;max-height:220px;overflow-y:auto;margin-top:2px;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+
+  PROVIDER_OPTIONS.forEach(o => {
+    const item = document.createElement('div');
+    item.style.cssText = 'display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:pointer;font-size:12px;color:var(--text);transition:background 0.12s';
+    const om = o.value ? PROVIDER_META[o.value] : null;
+    item.innerHTML = (om?logoHtml(om,14):'<span style="width:14px;display:inline-block"></span>')+'<span>'+o.label+'</span>';
+    item.onmouseenter = () => item.style.background = 'var(--surface1)';
+    item.onmouseleave = () => item.style.background = '';
+    item.onclick = (e) => {
+      e.stopPropagation();
+      const nm = o.value ? PROVIDER_META[o.value] : null;
+      trigger.innerHTML = (nm?logoHtml(nm,14):'')+'<span style="flex:1">'+o.label+'</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;color:var(--text3)"><polyline points="6 9 12 15 18 9"/></svg>';
+      menu.style.display = 'none';
+      sel.value = o.value;
+      if (onChange) onChange(o.value);
+    };
+    menu.appendChild(item);
+  });
+  wrapper.appendChild(menu);
+
+  trigger.onclick = (e) => { e.stopPropagation(); menu.style.display = menu.style.display === 'none' ? 'block' : 'none'; };
+
+  return wrapper;
+}
+
 function addRow(k, v, provider) {
   const tr = document.createElement('tr');
-  const selOptions = PROVIDER_OPTIONS.map(o => '<option value="'+o.value+'"'+(o.value===provider?' selected':'')+'>'+o.label+'</option>').join('');
-  const selVal = provider || '';
-  const selMeta = PROVIDER_OPTIONS.find(o => o.value === selVal);
-  const il = selMeta && selMeta.logo ? selMeta.logo : '';
-  tr.innerHTML = '<td><input class="model-input" value="'+esc(k)+'" placeholder="e.g. gemini-2.5-pro"></td>' +
-    '<td><input class="model-input" value="'+esc(v)+'" placeholder="e.g. deepseek-ai/deepseek-v4-flash"></td>' +
-    '<td style="display:flex;align-items:center;gap:4px">' +
-    '<img class="mlogo" src="'+il+'" style="width:14px;height:14px;border-radius:2px;flex-shrink:0;'+(il?'':'display:none')+'" onerror="this.style.display=\'none\'">' +
-    '<select class="model-provider-select" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:12px;outline:none">'+selOptions+'</select></td>' +
-    '<td><button class="btn-icon" onclick="this.closest(\'tr\').remove()" data-tooltip="Remove">✕</button></td>';
-  const sel = tr.querySelector('select');
-  const img = tr.querySelector('.mlogo');
-  sel.onchange = function() {
-    const o = PROVIDER_OPTIONS.find(x => x.value === this.value);
-    if (o && o.logo) { img.src = o.logo; img.style.display = ''; img.onerror = function(){this.style.display='none'}; }
-    else { img.style.display = 'none'; }
-  };
+
+  const td1 = document.createElement('td');
+  td1.innerHTML = '<div style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" style="width:14px;height:14px;flex-shrink:0"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg><input class="model-input" value="'+esc(k)+'" placeholder="e.g. gemini-2.5-pro"></div>';
+
+  const pMeta = provider ? PROVIDER_META[provider] : null;
+  const resolverLogo = pMeta ? logoHtml(pMeta, 14) : '';
+  const td2 = document.createElement('td');
+  td2.innerHTML = '<div style="display:flex;align-items:center;gap:4px"><span class="rlw" style="display:inline-flex;width:14px;height:14px;flex-shrink:0">'+resolverLogo+'</span><input class="model-input" value="'+esc(v)+'" placeholder="e.g. deepseek-ai/deepseek-v4-flash"></div>';
+
+  const td3 = document.createElement('td');
+  const psel = createProviderSelect(provider || '', function(val) {
+    const rl = td2.querySelector('.rlw');
+    const nm = val ? PROVIDER_META[val] : null;
+    if (rl) rl.innerHTML = nm ? logoHtml(nm, 14) : '';
+  });
+  td3.appendChild(psel);
+
+  const td4 = document.createElement('td');
+  td4.innerHTML = '<button class="btn-icon" onclick="this.closest(\'tr\').remove()" data-tooltip="Remove">✕</button>';
+
+  tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
   document.getElementById('modelsBody').appendChild(tr);
 }
+
 async function saveModels() {
   const flat = {};
   const providerModels = {};
   document.querySelectorAll('#modelsBody tr').forEach(tr => {
     const inp = tr.querySelectorAll('input');
-    const prov = tr.querySelector('select');
+    const prov = tr.querySelector('.psel-wrap select');
     const k = inp[0].value.trim(), v = inp[1].value.trim();
     const p = prov ? prov.value : '';
     if (!k || !v) return;
@@ -1294,6 +1363,9 @@ function connectSSE() {
 function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ---- Init ----
+document.addEventListener('click', function(e) {
+  document.querySelectorAll('.psel-menu').forEach(m => { if (!m.closest('.psel-wrap')?.contains(e.target)) m.style.display = 'none'; });
+});
 [document.getElementById('reqPagination')].forEach(el => { if (el) el.style.display='none'; });
 document.getElementById('historyDate').value = todayStr();
 reloadAll(); renderRequests(); loadModels(); connectSSE(); loadSessionDates();
