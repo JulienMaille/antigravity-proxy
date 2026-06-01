@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { config } from './config.js';
 import { logger, logBus, getRecentLogs, clearLogBuffer } from './logger.js';
 import { requestStore } from './request-store.js';
+import { reloadRouter } from './engine.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dashboardHtml = path.resolve(__dirname, '..', 'dashboard', 'index.html');
@@ -191,7 +192,11 @@ export function createDashboardHandler(): (req: http.IncomingMessage, res: http.
         apiPort: config.apiPort,
         proxyPort: config.proxyPort,
         logLevel: config.logLevel,
-        env: { PROVIDER: env.PROVIDER, LOG_LEVEL: env.LOG_LEVEL, PROXY_PORT: env.PROXY_PORT, API_PORT: env.API_PORT, NVIDIA_API_KEY: maskKey(env.NVIDIA_API_KEY), OPENROUTER_API_KEY: maskKey(env.OPENROUTER_API_KEY) },
+        retries: config.retries,
+        backoffMs: config.backoffMs,
+        providerPriority: config.providerPriority,
+        providers: config.providers.map(p => ({ id: p.id, priority: p.priority, hasKey: !!p.apiKey, enabled: p.enabled })),
+        env: { PROVIDER: env.PROVIDER, LOG_LEVEL: env.LOG_LEVEL, PROXY_PORT: env.PROXY_PORT, API_PORT: env.API_PORT, PROVIDER_PRIORITY: env.PROVIDER_PRIORITY, PROXY_RETRIES: env.PROXY_RETRIES, PROXY_BACKOFF_MS: env.PROXY_BACKOFF_MS, NVIDIA_API_KEY: maskKey(env.NVIDIA_API_KEY), OPENROUTER_API_KEY: maskKey(env.OPENROUTER_API_KEY), ANTHROPIC_API_KEY: maskKey(env.ANTHROPIC_API_KEY), OPENAI_API_KEY: maskKey(env.OPENAI_API_KEY), GROQ_API_KEY: maskKey(env.GROQ_API_KEY), GOOGLE_API_KEY: maskKey(env.GOOGLE_API_KEY) },
         stats,
       });
       return;
@@ -208,8 +213,11 @@ export function createDashboardHandler(): (req: http.IncomingMessage, res: http.
       req.on('end', () => {
         try {
           const updates = JSON.parse(body);
-          if (writeEnv(updates)) jsonResp(res, { ok: true });
-          else jsonResp(res, { ok: false, error: 'write failed' }, 500);
+          if (writeEnv(updates)) {
+            config.reload();
+            reloadRouter();
+            jsonResp(res, { ok: true });
+          } else jsonResp(res, { ok: false, error: 'write failed' }, 500);
         } catch (e: any) { jsonResp(res, { ok: false, error: e.message }, 400); }
       });
       return;
@@ -226,10 +234,22 @@ export function createDashboardHandler(): (req: http.IncomingMessage, res: http.
       req.on('end', () => {
         try {
           const models = JSON.parse(body);
-          if (writeModels(models)) jsonResp(res, { ok: true });
-          else jsonResp(res, { ok: false, error: 'write failed' }, 500);
+          if (writeModels(models)) {
+            reloadRouter();
+            jsonResp(res, { ok: true });
+          } else jsonResp(res, { ok: false, error: 'write failed' }, 500);
         } catch (e: any) { jsonResp(res, { ok: false, error: e.message }, 400); }
       });
+      return;
+    }
+
+    if (url.pathname === '/api/reload' && method === 'POST') {
+      try {
+        config.reload();
+        reloadRouter();
+        logger.info('[dashboard] Hot-reload complete');
+        jsonResp(res, { ok: true });
+      } catch (e: any) { jsonResp(res, { ok: false, error: e.message }, 500); }
       return;
     }
 

@@ -8,7 +8,7 @@ import { config } from './config.js';
 import { logger } from './logger.js';
 import { validateApiKey } from './auth.js';
 import { streamResponse } from './engine.js';
-import { mapContentsToMessages, mapTools, mapGenerationConfig, mapModelName, extractToolCalls } from './mapper.js';
+import { mapContentsToMessages, mapTools, mapGenerationConfig, extractToolCalls } from './mapper.js';
 import { requestStore } from './request-store.js';
 import { createDashboardHandler } from './dashboard.js';
 import type { Content, Tool, GenerationConfig } from './types.js';
@@ -218,15 +218,13 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
     mapped.tools = mappedTools;
   }
 
-  const resolvedModel = mapModelName(model);
-  const providerLabel = config.provider.toUpperCase();
-  logger.info(`  ${providerLabel} → ${resolvedModel}`);
+  logger.info(`  Routing ${model} → ${config.providerPriority.join(', ')}`);
 
   const responseId = genGoogleId();
   const traceId = genTraceId();
 
   requestStore.push({
-    id: responseId, timestamp: new Date().toISOString(), model, resolvedModel,
+    id: responseId, timestamp: new Date().toISOString(), model, resolvedModel: model,
     direction: 'incoming', type: 'text', content: `Prompt: ${promptText.substring(0, 500)}${promptText.length > 500 ? '...' : ''}`,
     promptTokens,
   });
@@ -239,37 +237,38 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
   });
 
   try {
-    const generator = streamResponse(mapped, resolvedModel);
+    const generator = streamResponse(mapped, model);
     let fullText = '';
+    let thoughtText = '';
     const toolCalls: { name: string; args: Record<string, unknown> }[] = [];
 
     for await (const chunk of generator) {
       const ctype = (chunk as any).type as string;
       if (ctype === 'text') {
         fullText += (chunk as any).content as string || '';
+      } else if (ctype === 'thought') {
+        thoughtText += (chunk as any).content as string || '';
       } else if (ctype === 'tool-call') {
         toolCalls.push({ name: (chunk as any).name, args: (chunk as any).args });
       }
     }
 
     if (toolCalls.length > 0) {
-      // Send text (if any) as intermediate event
       if (fullText) {
         res.write(buildGoogleEvent({
-          modelVersion: resolvedModel, projectPath, responseId, traceId, promptTokens,
-          text: fullText,
+          modelVersion: model, projectPath, responseId, traceId, promptTokens,
+          text: fullText, thoughtText,
         }), 'utf-8');
       }
-      // Send ALL tool calls as a SINGLE event with flat parts array + STOP
       res.write(buildGoogleEvent({
-        modelVersion: resolvedModel, projectPath, responseId, traceId, promptTokens,
+        modelVersion: model, projectPath, responseId, traceId, promptTokens,
         functionCalls: toolCalls,
         finishReason: 'STOP',
       }), 'utf-8');
     } else {
       res.write(buildGoogleEvent({
-        modelVersion: resolvedModel, projectPath, responseId, traceId, promptTokens,
-        text: fullText,
+        modelVersion: model, projectPath, responseId, traceId, promptTokens,
+        text: fullText, thoughtText,
         finishReason: 'STOP',
       }), 'utf-8');
     }
@@ -278,15 +277,15 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
     if (toolCalls.length > 0) {
       logger.info(`<<< Completed: ${req.url} (${fullText.length} chars, ${toolCalls.length} tool calls)`, { toolCalls: toolCalls.map(tc => ({ name: tc.name, args: tc.args })) });
       requestStore.push({
-        id: responseId, timestamp: new Date().toISOString(), model, resolvedModel,
+        id: responseId, timestamp: new Date().toISOString(), model, resolvedModel: model,
         direction: 'outgoing', type: 'tool-call', content: fullText,
         toolCalls: toolCalls.map(tc => ({ name: tc.name, args: tc.args })),
         promptTokens, outputTokens: estTokens(fullText),
       });
     } else {
-      logger.info(`<<< Completed: ${req.url} (${fullText.length} chars, ${toolCalls.length} tool calls, model: ${resolvedModel})`);
+      logger.info(`<<< Completed: ${req.url} (${fullText.length} chars, ${toolCalls.length} tool calls, model: ${model})`);
       requestStore.push({
-        id: responseId, timestamp: new Date().toISOString(), model, resolvedModel,
+        id: responseId, timestamp: new Date().toISOString(), model, resolvedModel: model,
         direction: 'outgoing', type: 'text', content: fullText,
         promptTokens, outputTokens: estTokens(fullText),
       });
@@ -294,8 +293,8 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
   } catch (err: any) {
     logger.error(`<<< Error: ${req.url}`, { error: err.message });
     requestStore.push({
-      id: responseId, timestamp: new Date().toISOString(), model, resolvedModel,
-      direction: 'outgoing', type: 'error', content: '',
+        id: responseId, timestamp: new Date().toISOString(), model, resolvedModel: model,
+        direction: 'outgoing', type: 'error', content: '',
       error: err.message,
     });
     const errResp = JSON.stringify({
@@ -304,7 +303,7 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
           content: { role: 'model', parts: [{ text: `Error: ${err.message}. Check proxy log for details.` }] },
           finishReason: 'ERROR',
         }],
-        modelVersion: `${projectPath}/publishers/${config.provider}/models/${resolvedModel}`,
+        modelVersion: `${projectPath}/publishers/${config.provider}/models/${model}`,
         responseId,
       },
       traceId,

@@ -536,9 +536,9 @@ tbody tr:hover{background:var(--surface2);}
         </h3>
         <div class="form-row">
           <div class="form-group">
-            <label>Provider</label>
-            <select id="cfgProvider"><option value="nvidia">NVIDIA</option><option value="openrouter">OpenRouter</option></select>
-            <div class="hint">Backend API provider for model inference</div>
+            <label>Provider Priority</label>
+            <div id="providerPriorityList" style="display:flex;flex-direction:column;gap:4px;margin-top:4px"></div>
+            <div class="hint" style="margin-top:6px">Ordered list of providers for failover. Drag to reorder. First available with a configured API key wins.</div>
           </div>
           <div class="form-group">
             <label>Log Level</label>
@@ -554,14 +554,34 @@ tbody tr:hover{background:var(--surface2);}
           API Keys
         </h3>
         <div class="form-group">
-          <label>NVIDIA API Key <span id="nvKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
-          <input type="password" id="cfgNvidiaKey" placeholder="nvapi-...">
-          <div class="hint">Required for NVIDIA provider. Get from <span style="color:var(--accent2)">build.nvidia.com</span></div>
-        </div>
-        <div class="form-group">
           <label>OpenRouter API Key <span id="orKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
           <input type="password" id="cfgOpenrouterKey" placeholder="sk-or-v1-...">
-          <div class="hint">Required for OpenRouter provider. Get from <span style="color:var(--accent2)">openrouter.ai/keys</span></div>
+          <div class="hint">From <span style="color:var(--accent2)">openrouter.ai/keys</span></div>
+        </div>
+        <div class="form-group">
+          <label>NVIDIA API Key <span id="nvKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
+          <input type="password" id="cfgNvidiaKey" placeholder="nvapi-...">
+          <div class="hint">From <span style="color:var(--accent2)">build.nvidia.com</span></div>
+        </div>
+        <div class="form-group">
+          <label>OpenAI API Key <span id="oaiKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
+          <input type="password" id="cfgOpenaiKey" placeholder="sk-...">
+          <div class="hint">From <span style="color:var(--accent2)">platform.openai.com/api-keys</span></div>
+        </div>
+        <div class="form-group">
+          <label>Groq API Key <span id="groqKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
+          <input type="password" id="cfgGroqKey" placeholder="gsk_...">
+          <div class="hint">From <span style="color:var(--accent2)">console.groq.com/keys</span></div>
+        </div>
+        <div class="form-group">
+          <label>Anthropic API Key <span id="anthKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
+          <input type="password" id="cfgAnthropicKey" placeholder="sk-ant-...">
+          <div class="hint">From <span style="color:var(--accent2)">console.anthropic.com/settings/keys</span></div>
+        </div>
+        <div class="form-group">
+          <label>Google API Key <span id="googleKeyStatus" style="font-size:11px;color:var(--text3);font-weight:400">—</span></label>
+          <input type="password" id="cfgGoogleKey" placeholder="AIza...">
+          <div class="hint">From <span style="color:var(--accent2)">aistudio.google.com/apikey</span></div>
         </div>
       </div>
 
@@ -584,12 +604,31 @@ tbody tr:hover{background:var(--surface2);}
         </div>
       </div>
 
+      <div class="form-section">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Retry & Failover
+        </h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Max Retries</label>
+            <input type="number" id="cfgRetries" placeholder="10" min="0" max="50">
+            <div class="hint">Retry attempts per provider before failover (0 = no retry)</div>
+          </div>
+          <div class="form-group">
+            <label>Backoff (ms)</label>
+            <input type="number" id="cfgBackoffMs" placeholder="1000" min="100" max="60000" step="100">
+            <div class="hint">Initial backoff in ms, doubles each retry</div>
+          </div>
+        </div>
+      </div>
+
       <div style="display:flex;gap:10px">
         <button class="btn btn-primary" onclick="saveConfig()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           Save Changes
         </button>
-        <span style="font-size:12px;color:var(--text3);align-self:center">Config is saved to <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:11px">.env</code> — restart proxy to apply</span>
+        <span style="font-size:12px;color:var(--text3);align-self:center">Changes saved to <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:11px">.env</code> — hot-reloaded immediately</span>
       </div>
     </section>
 
@@ -612,9 +651,9 @@ tbody tr:hover{background:var(--surface2);}
         </div>
       </div>
       <div class="table-wrap">
-        <table><thead><tr><th style="width:38%">Model ID</th><th style="width:38%">Resolved Model</th><th style="width:24%"></th></tr></thead><tbody id="modelsBody"></tbody></table>
+        <table><thead><tr><th style="width:30%">Model ID</th><th style="width:30%">Resolved Model</th><th style="width:20%">Provider</th><th style="width:20%"></th></tr></thead><tbody id="modelsBody"></tbody></table>
       </div>
-      <p style="font-size:11px;color:var(--text3);margin-top:8px">Leave empty to delete rows. Only non-empty mappings are saved.</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:8px">Leave empty to delete rows. Set Provider to override per-provider. Empty Provider = default for all providers.</p>
     </section>
 
     <!-- Live Log -->
@@ -739,12 +778,18 @@ async function reloadAll() {
     for (const [k, v] of Object.entries(s.env)) {
       et.innerHTML += `<tr><td style="font-weight:500;white-space:nowrap;color:var(--text2);font-size:12px;width:200px">${k}</td><td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${v||'—'}</td></tr>`;
     }
-    document.getElementById('cfgProvider').value = s.provider;
+    renderProviderPriority(s.providerPriority || ['openrouter','nvidia'], s.providers || []);
     document.getElementById('cfgProxyPort').value = s.proxyPort;
     document.getElementById('cfgApiPort').value = s.apiPort;
     document.getElementById('cfgLogLevel').value = s.logLevel;
+    document.getElementById('cfgRetries').value = s.retries||10;
+    document.getElementById('cfgBackoffMs').value = s.backoffMs||1000;
     document.getElementById('nvKeyStatus').textContent = s.env.NVIDIA_API_KEY ? '✓ configured' : '○ not set';
     document.getElementById('orKeyStatus').textContent = s.env.OPENROUTER_API_KEY ? '✓ configured' : '○ not set';
+    document.getElementById('oaiKeyStatus').textContent = s.env.OPENAI_API_KEY ? '✓ configured' : '○ not set';
+    document.getElementById('groqKeyStatus').textContent = s.env.GROQ_API_KEY ? '✓ configured' : '○ not set';
+    document.getElementById('anthKeyStatus').textContent = s.env.ANTHROPIC_API_KEY ? '✓ configured' : '○ not set';
+    document.getElementById('googleKeyStatus').textContent = s.env.GOOGLE_API_KEY ? '✓ configured' : '○ not set';
   } catch (e) {}
 }
 
@@ -1028,37 +1073,174 @@ async function deleteSession(file) {
 }
 
 // ---- Config ----
+const PROVIDER_META = {
+  openrouter: { label: 'OpenRouter', color: '#84e', desc: 'Broad model selection' },
+  nvidia:     { label: 'NVIDIA',     color: '#4b8', desc: 'NVIDIA NIM API' },
+  openai:     { label: 'OpenAI',     color: '#090', desc: 'Direct OpenAI API' },
+  groq:       { label: 'Groq',       color: '#e80', desc: 'Groq LPU inference' },
+  anthropic:  { label: 'Anthropic',  color: '#e48', desc: 'Claude models API' },
+  google:     { label: 'Google',     color: '#48e', desc: 'Gemini models API' },
+  ollama:     { label: 'Ollama',     color: '#888', desc: 'Local: localhost:11434' },
+  vllm:       { label: 'vLLM',       color: '#888', desc: 'Local: localhost:8000' },
+  lmstudio:   { label: 'LM Studio',  color: '#888', desc: 'Local: localhost:1234' },
+};
+
+function renderProviderPriority(priority, providers) {
+  const container = document.getElementById('providerPriorityList');
+  const hasKey = (id) => { const p = (providers||[]).find(x => x.id === id); return p ? p.hasKey : false; };
+  container.innerHTML = priority.map((id, i) => {
+    const meta = PROVIDER_META[id] || { label: id, color: '#888', desc: '' };
+    const keyStatus = hasKey(id) ? '✓' : '○';
+    return '<div class="prio-item" data-provider="'+id+'" draggable="true" style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border-radius:6px;cursor:grab;font-size:13px">' +
+      '<span style="color:var(--text3);font-size:11px;width:16px">'+(i+1)+'</span>' +
+      '<span style="width:8px;height:8px;border-radius:50%;background:'+meta.color+';flex-shrink:0"></span>' +
+      '<span style="flex:1;color:var(--text1);font-weight:500">'+meta.label+'</span>' +
+      '<span style="color:'+(hasKey(id)?'var(--green)':'var(--text3)')+';font-size:11px">'+keyStatus+'</span>' +
+      '<span style="color:var(--text3);font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+meta.desc+'</span>' +
+      '<span style="color:var(--text3);font-size:10px;cursor:pointer;margin-left:4px" onclick="removeProviderPriority(\''+id+'\')">✕</span>' +
+    '</div>';
+  }).join('');
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn btn-sm';
+  addBtn.style.cssText = 'margin-top:6px;align-self:flex-start';
+  addBtn.textContent = '+ Add Provider';
+  addBtn.onclick = () => showAddProviderModal(priority, providers);
+  container.appendChild(addBtn);
+  container.querySelectorAll('.prio-item').forEach(el => {
+    el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', el.dataset.provider); el.style.opacity = '0.4'; });
+    el.addEventListener('dragend', (e) => { el.style.opacity = '1'; });
+    el.addEventListener('dragover', (e) => { e.preventDefault(); });
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const from = e.dataTransfer.getData('text/plain');
+      const to = el.dataset.provider;
+      if (from === to) return;
+      const items = container.querySelectorAll('.prio-item');
+      const ids = Array.from(items).map(x => x.dataset.provider);
+      const fi = ids.indexOf(from), ti = ids.indexOf(to);
+      ids.splice(fi, 1);
+      ids.splice(ti, 0, from);
+      renderProviderPriority(ids, providers.map(p => p.id === from || p.id === to ? { ...p, id: p.id === from ? to : from } : p));
+    });
+  });
+}
+
+function removeProviderPriority(id) {
+  const items = document.getElementById('providerPriorityList').querySelectorAll('.prio-item');
+  const providerIds = Array.from(items).map(x => x.dataset.provider).filter(x => x !== id);
+  renderProviderPriority(providerIds, []);
+}
+
+function showAddProviderModal(currentPriority, currentProviders) {
+  const ids = Object.keys(PROVIDER_META).filter(id => !currentPriority.includes(id));
+  if (ids.length === 0) { toast('All providers already in list'); return; }
+  const picker = document.createElement('div');
+  picker.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;padding:4px';
+  picker.innerHTML = ids.map(id => {
+    const meta = PROVIDER_META[id];
+    return '<button class="btn btn-sm" data-provider="'+id+'" style="display:flex;align-items:center;gap:4px;font-size:12px">' +
+      '<span style="width:6px;height:6px;border-radius:50%;background:'+meta.color+'"></span> '+meta.label +
+    '</button>';
+  }).join('');
+  picker.querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.provider;
+      const allIds = [...currentPriority, id];
+      renderProviderPriority(allIds, currentProviders || []);
+      picker.remove();
+    };
+  });
+  document.getElementById('providerPriorityList').appendChild(picker);
+}
+
+function getProviderPriority() {
+  const items = document.getElementById('providerPriorityList').querySelectorAll('.prio-item');
+  return Array.from(items).map(el => el.dataset.provider).join(',');
+}
+
+function deleteEmpty(obj) {
+  Object.keys(obj).forEach(k => { if (!obj[k]) delete obj[k]; });
+}
+
 async function saveConfig() {
   const u = {
-    PROVIDER: document.getElementById('cfgProvider').value,
-    NVIDIA_API_KEY: document.getElementById('cfgNvidiaKey').value.trim(),
+    PROVIDER_PRIORITY: getProviderPriority(),
     OPENROUTER_API_KEY: document.getElementById('cfgOpenrouterKey').value.trim(),
+    NVIDIA_API_KEY: document.getElementById('cfgNvidiaKey').value.trim(),
+    OPENAI_API_KEY: document.getElementById('cfgOpenaiKey').value.trim(),
+    GROQ_API_KEY: document.getElementById('cfgGroqKey').value.trim(),
+    ANTHROPIC_API_KEY: document.getElementById('cfgAnthropicKey').value.trim(),
+    GOOGLE_API_KEY: document.getElementById('cfgGoogleKey').value.trim(),
     PROXY_PORT: document.getElementById('cfgProxyPort').value,
     API_PORT: document.getElementById('cfgApiPort').value,
     LOG_LEVEL: document.getElementById('cfgLogLevel').value,
+    PROXY_RETRIES: document.getElementById('cfgRetries').value,
+    PROXY_BACKOFF_MS: document.getElementById('cfgBackoffMs').value,
   };
-  Object.keys(u).forEach(k => { if (!u[k]) delete u[k]; });
-  try { const r = await api('POST','/api/config',u); if (r.ok) { toast('Config saved. Restart proxy to apply.'); reloadAll(); } else toast('Save failed: '+r.error, true); }
+  deleteEmpty(u);
+  try { const r = await api('POST','/api/config',u); if (r.ok) { toast('Config saved and loaded'); reloadAll(); } else toast('Save failed: '+r.error, true); }
   catch (e) { toast('Save failed: '+e.message, true); }
 }
 
 // ---- Models ----
+const PROVIDER_OPTIONS = [
+  { value: '', label: 'Default (all)' },
+  { value: 'openrouter', label: 'OpenRouter' },
+  { value: 'nvidia', label: 'NVIDIA' },
+  { value: 'openai', label: 'OpenAI' },
+  { value: 'groq', label: 'Groq' },
+  { value: 'anthropic', label: 'Anthropic' },
+  { value: 'google', label: 'Google' },
+  { value: 'ollama', label: 'Ollama' },
+  { value: 'vllm', label: 'vLLM' },
+  { value: 'lmstudio', label: 'LM Studio' },
+];
+
 async function loadModels() {
-  try { const m = await api('GET','/api/models'); const tb = document.getElementById('modelsBody'); tb.innerHTML = ''; Object.entries(m).forEach(([k,v]) => addRow(k,v)); } catch (e) {}
+  try {
+    const m = await api('GET','/api/models');
+    const tb = document.getElementById('modelsBody'); tb.innerHTML = '';
+    const providerModels = m._provider_models || {};
+    for (const [k, v] of Object.entries(m)) {
+      if (k === '_provider_models') continue;
+      addRow(k, v, '');
+    }
+    for (const [model, providers] of Object.entries(providerModels)) {
+      for (const [prov, resolved] of Object.entries(providers)) {
+        addRow(model, resolved, prov);
+      }
+    }
+  } catch (e) {}
 }
-function addModelRow() { addRow('',''); }
-function addRow(k,v) {
+function addModelRow() { addRow('','',''); }
+function addRow(k, v, provider) {
   const tr = document.createElement('tr');
-  tr.innerHTML = `<td><input class="model-input" value="${esc(k)}" placeholder="e.g. gemini-2.5-pro"></td><td><input class="model-input" value="${esc(v)}" placeholder="e.g. deepseek-ai/deepseek-v4-flash"></td><td><button class="btn-icon" onclick="this.closest('tr').remove()" data-tooltip="Remove">✕</button></td>`;
+  const sel = PROVIDER_OPTIONS.map(o => '<option value="'+o.value+'"'+(o.value===provider?' selected':'')+'>'+o.label+'</option>').join('');
+  tr.innerHTML = '<td><input class="model-input" value="'+esc(k)+'" placeholder="e.g. gemini-2.5-pro"></td>' +
+    '<td><input class="model-input" value="'+esc(v)+'" placeholder="e.g. deepseek-ai/deepseek-v4-flash"></td>' +
+    '<td><select class="model-provider-select" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:12px;outline:none">'+sel+'</select></td>' +
+    '<td><button class="btn-icon" onclick="this.closest(\'tr\').remove()" data-tooltip="Remove">✕</button></td>';
   document.getElementById('modelsBody').appendChild(tr);
 }
 async function saveModels() {
-  const models = {};
+  const flat = {};
+  const providerModels = {};
   document.querySelectorAll('#modelsBody tr').forEach(tr => {
-    const inp = tr.querySelectorAll('input'); const k = inp[0].value.trim(), v = inp[1].value.trim();
-    if (k && v) models[k] = v;
+    const inp = tr.querySelectorAll('input');
+    const prov = tr.querySelector('select');
+    const k = inp[0].value.trim(), v = inp[1].value.trim();
+    const p = prov ? prov.value : '';
+    if (!k || !v) return;
+    if (p) {
+      if (!providerModels[k]) providerModels[k] = {};
+      providerModels[k][p] = v;
+    } else {
+      flat[k] = v;
+    }
   });
-  try { const r = await api('POST','/api/models',models); if (r.ok) toast('Models saved'); else toast('Save failed', true); } catch (e) { toast('Save failed: '+e.message, true); }
+  const payload = { ...flat };
+  if (Object.keys(providerModels).length > 0) payload._provider_models = providerModels;
+  try { const r = await api('POST','/api/models',payload); if (r.ok) { toast('Models saved and loaded'); loadModels(); } else toast('Save failed', true); } catch (e) { toast('Save failed: '+e.message, true); }
 }
 
 // ---- Log ----

@@ -2,49 +2,68 @@
 
 ## Provider Configuration: `proxy/.env`
 
-Edit this file or run `setup.ps1` to reconfigure.
+Edit this file from the dashboard Config tab or directly.
 
 ```ini
-# Provider: nvidia or openrouter
-PROVIDER=nvidia
+# Provider priority order (comma-separated, first = primary)
+PROVIDER_PRIORITY=openrouter,nvidia,groq,openai
 
-# Your API keys (only the one for your active provider is needed)
-NVIDIA_API_KEY=nvapi-abc123...
+# API keys (only those for your active providers)
 OPENROUTER_API_KEY=sk-or-v1-abc123...
+NVIDIA_API_KEY=nvapi-abc123...
+GROQ_API_KEY=gsk_abc123...
+OPENAI_API_KEY=sk-abc123...
+ANTHROPIC_API_KEY=sk-ant-abc123...
+GOOGLE_API_KEY=AIza...
 
 # Proxy ports
 PROXY_PORT=443
 API_PORT=4000
 
+# Retry & failover
+PROXY_RETRIES=10
+PROXY_BACKOFF_MS=1000
+
 # Log level: debug, info, warn, error
 LOG_LEVEL=info
 ```
-
-When you change `PROVIDER`, the proxy reads the matching `_API_KEY` and `_BASE_URL` automatically.
 
 ### Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PROVIDER` | Provider selection (`nvidia` or `openrouter`) | `openrouter` |
-| `NVIDIA_API_KEY` | API key from build.nvidia.com | — |
-| `OPENROUTER_API_KEY` | API key from openrouter.ai/keys | — |
-| `NVIDIA_BASE_URL` | NVIDIA API base URL | `https://integrate.api.nvidia.com/v1` |
-| `OPENROUTER_BASE_URL` | OpenRouter API base URL | `https://openrouter.ai/api/v1` |
+| `PROVIDER_PRIORITY` | Comma-separated priority list | `openrouter,nvidia` |
+| `PROVIDER` | Legacy single-provider (backward compat) | `openrouter` |
+| `{PROVIDER}_API_KEY` | API key per provider (e.g. `NVIDIA_API_KEY`) | — |
+| `{PROVIDER}_BASE_URL` | Optional base URL override per provider | See adapter defaults |
 | `PROXY_PORT` | HTTPS intercept port | `443` |
 | `API_PORT` | HTTP REST forward port | `4000` |
+| `PROXY_RETRIES` | Max retry attempts per provider before failover | `10` |
+| `PROXY_BACKOFF_MS` | Initial backoff in ms (doubles each retry) | `1000` |
 | `LOG_LEVEL` | Log verbosity | `info` |
 | `ANTIGRAVITY_CONTEXT` | Set to `false` to disable context injection | `true` |
+
+### Supported Providers
+
+| Provider ID | Env Key | Adapter | Default Base URL |
+|-------------|---------|---------|------------------|
+| `openrouter` | `OPENROUTER_API_KEY` | OpenAI-compat | `https://openrouter.ai/api/v1` |
+| `nvidia` | `NVIDIA_API_KEY` | OpenAI-compat | `https://integrate.api.nvidia.com/v1` |
+| `openai` | `OPENAI_API_KEY` | OpenAI-compat | `https://api.openai.com/v1` |
+| `groq` | `GROQ_API_KEY` | OpenAI-compat | `https://api.groq.com/openai/v1` |
+| `anthropic` | `ANTHROPIC_API_KEY` | Anthropic | `https://api.anthropic.com/v1` |
+| `google` | `GOOGLE_API_KEY` | Google Gemini | `https://generativelanguage.googleapis.com` |
+| `ollama` | none | OpenAI-compat | `http://localhost:11434` |
+| `vllm` | none | OpenAI-compat | `http://localhost:8000` |
+| `lmstudio` | none | OpenAI-compat | `http://localhost:1234` |
 
 ---
 
 ## Model Mapping: `proxy/models.json`
 
-This file controls which AI model Antigravity uses for each internal model name.
+Controls which AI model the router sends to each provider for each Antigravity model name.
 
-### How It Works
-
-Antigravity requests models by internal names like `claude-sonnet-4-6-thinking` or `gemini-3.1-flash`. The JSON file maps those names to real model IDs on your provider.
+### Flat Mapping (Default)
 
 ```json
 {
@@ -54,57 +73,58 @@ Antigravity requests models by internal names like `claude-sonnet-4-6-thinking` 
 }
 ```
 
-### Lookup Order
+Every provider in the priority chain receives the same resolved model name.
 
-1. **Exact match** — `"claude-sonnet-4-6-thinking"` matches directly
-2. **Prefix match** — Strips `models/` prefix, then tries shorter keys
-3. **`default`** — Fallback if nothing matches
+### Per-Provider Mapping
 
-### Provider Model ID Formats
+Use `_provider_models` to route specific models to specific providers:
 
-| Provider | Format Example | Where to Browse |
-|----------|---------------|----------------|
-| **NVIDIA NIM** | `deepseek-ai/deepseek-v4-flash`, `stepfun-ai/step-3.7-flash` | [build.nvidia.com](https://build.nvidia.com) |
-| **OpenRouter** | `openai/gpt-4o`, `anthropic/claude-sonnet-4`, `deepseek-ai/deepseek-v4-flash` | [openrouter.ai/models](https://openrouter.ai/models) |
-
-### Default Files
-
-- `proxy/models.openrouter.json` — Shipped defaults for OpenRouter
-- `proxy/models.nvidia.json` — Shipped defaults for NVIDIA
-
-Run `setup.ps1` to copy the right one to `models.json`, or copy manually:
-
-```powershell
-Copy-Item proxy/models.nvidia.json proxy/models.json
+```json
+{
+  "gpt-oss-120b": "stepfun-ai/step-3.7-flash",
+  "_provider_models": {
+    "gpt-oss-120b": {
+      "groq": "qwen/qwen3-32b",
+      "nvidia": "nvidia/llama-3.1-nemotron-ultra-253b-v1"
+    },
+    "qwen3-32b": {
+      "ollama": "qwen3:32b"
+    }
+  },
+  "default": "stepfun-ai/step-3.7-flash"
+}
 ```
 
-### Proven Working Models
+When `_provider_models` is set for a model, the router **only tries those providers** (in priority order). This lets you use different providers for different model families.
 
-These models have been tested and confirmed to work reliably for tool-calling agentic tasks:
+### Lookup Order
 
-#### NVIDIA NIM
-| Model ID | Tier | Notes |
-|----------|------|-------|
-| `deepseek-ai/deepseek-v4-flash` | Agent / Chat | Best all-rounder. 200B+ parameters. Reliable tool chaining. |
-| `stepfun-ai/step-3.7-flash` | Agent / Thinking | v3.7 (200B+). Good for multi-turn agentic tasks. |
+1. **Per-provider** — `_provider_models[model][providerId]` if set
+2. **Flat map** — exact match or prefix match in `models.json`
+3. **`default`** — fallback if nothing matches
 
-#### OpenRouter
-| Model ID | Tier | Notes |
-|----------|------|-------|
-| `deepseek-ai/deepseek-v4-flash` | Agent / Chat | Same model, same reliability |
-| `moonshotai/kimi-k2.6` | Agent / Chat | Strong alternative |
-| `stepfun-ai/step-3.5-flash` | Fast / Cheap | Lighter model for quick tasks |
-| `minimaxai/minimax-m2.7` | Fast / Cheap | Good for lightweight conversations |
-| `google/gemma-4-31b-it` | Fast / Cheap | Google's own Gemma 4 |
+### Editing from Dashboard
 
-To use free-tier OpenRouter models, append `:free` suffix (e.g., `deepseek-ai/deepseek-v4-flash:free`), but note these are rate-limited.
+Use the Models tab in the dashboard — add/remove rows, set provider in dropdown, changes are hot-reloaded immediately.
+
+---
+
+## Retry & Failover Behavior
+
+When a provider returns an error, the router:
+
+1. Waits `backoffMs * 2^attempt` (detects rate limits → starts at 10s instead of 1s)
+2. Retries up to `PROXY_RETRIES` times (default 10)
+3. If all retries exhausted → tries the next provider in priority order
+4. If all providers fail → returns error to the client
 
 ---
 
 ## Tips
 
-- After editing `models.json`, **restart the proxy** to pick up changes
-- For NVIDIA, all models go through the `integrate.api.nvidia.com/v1` endpoint — no special setup needed
-- For OpenRouter free models, expect occasional 429 rate limits during rapid tool-calling sequences
-- The `default` key acts as a catch-all — anything not explicitly mapped falls back to this
-- If a model doesn't support tool/function calling, the proxy will still work for chat but agent tool use will fail
+- Changes to `.env` and `models.json` are **hot-reloaded immediately** via the dashboard — no restart needed
+- The Dashboard Config tab has a drag-and-drop provider priority list with save
+- Models tab supports per-provider model entries via a dropdown column
+- For local models (Ollama, vLLM, LM Studio), no API key is needed
+- The `default` key acts as catch-all for any unmapped model
+- Rate limit errors (429, 413) get extended backoff compared to other errors

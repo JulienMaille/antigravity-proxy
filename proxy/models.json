@@ -2,8 +2,8 @@
   "gemini-3.5-flash": "deepseek-ai/deepseek-v4-flash",
   "gemini-3.5-flash-low": "deepseek-ai/deepseek-v4-flash",
   "gemini-3.5-flash-medium": "deepseek-ai/deepseek-v4-flash",
-  "gemini-3.5-flash-high": "deepseek-ai/deepseek-v4-flash",
-  "gemini-3-flash-agent": "deepseek-ai/deepseek-v4-flash",
+  "gemini-3.5-flash-high": "openrouter/free",
+  "gemini-3-flash-agent": "openrouter/free",
   "gemini-3.1-flash-lite": "deepseek-ai/deepseek-v4-flash",
   "gemini-3.1-flash": "deepseek-ai/deepseek-v4-flash",
   "gemini-3.1-pro": "qwen/qwen3.5-122b-a10b",
@@ -13,7 +13,13 @@
   "claude-sonnet-4-6-thinking": "minimaxai/minimax-m2.7",
   "claude-opus-4-6": "stepfun-ai/step-3.7-flash",
   "claude-opus-4-6-thinking": "stepfun-ai/step-3.7-flash",
-  "gpt-oss-120b": "stepfun-ai/step-3.7-flash",
-  "gpt-oss-120b-medium": "stepfun-ai/step-3.7-flash",
-  "default": "stepfun-ai/step-3.7-flash"
+  "default": "stepfun-ai/step-3.7-flash",
+  "_provider_models": {
+    "gpt-oss-120b": {
+      "google": "gemma-4-31b-it"
+    },
+    "gpt-oss-120b-medium": {
+      "google": "gemma-4-31b-it"
+    }
+  }
 }
