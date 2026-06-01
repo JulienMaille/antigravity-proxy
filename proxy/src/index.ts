@@ -218,7 +218,7 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
     mapped.tools = mappedTools;
   }
 
-  logger.info(`  Routing ${model} → ${config.providerPriority.join(', ')}`);
+  logger.info(`  Provider priority: ${config.providerPriority.join(', ')}`);
 
   const responseId = genGoogleId();
   const traceId = genTraceId();

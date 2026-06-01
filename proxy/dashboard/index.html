@@ -402,6 +402,10 @@ tbody tr:hover{background:var(--surface2);}
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
       <span>Models</span>
     </div>
+    <div class="nav-item" data-tab="browse">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <span>Browse Models</span>
+    </div>
     <div class="nav-item" data-tab="log">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
       <span>Live Log</span>
@@ -654,26 +658,31 @@ tbody tr:hover{background:var(--surface2);}
         <table><thead><tr><th style="width:30%">Model ID</th><th style="width:30%">Resolved Model</th><th style="width:20%">Provider</th><th style="width:20%"></th></tr></thead><tbody id="modelsBody"></tbody></table>
       </div>
       <p style="font-size:11px;color:var(--text3);margin-top:8px">Leave empty to delete rows. Set Provider to override per-provider. Empty Provider = default for all providers.</p>
-      <div class="browse-section" style="margin-top:20px;border-top:1px solid var(--border2);padding-top:16px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--accent)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <span style="font-size:13px;font-weight:600">Browse Provider Models</span>
-          <span style="font-size:11px;color:var(--text3)">Fetch available models, toggle what you want, add them as rows</span>
+    </section>
+
+    <!-- Browse -->
+    <section class="section" id="sec-browse">
+      <div style="margin-bottom:16px">
+        <p style="font-size:13px;color:var(--text2)">Fetch available models from any provider, toggle what you want, add them to your config.</p>
+      </div>
+      <form onsubmit="browseFetch();return false" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <div id="browseProviderSelect" style="width:160px"></div>
+        <input type="password" id="browseApiKey" placeholder="API key (optional)" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:12px;outline:none;width:200px;font-family:var(--mono)">
+        <button class="btn btn-sm" id="browseFetchBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Fetch</button>
+        <span id="browseFetchStatus" style="font-size:11px;color:var(--text3)"></span>
+      </form>
+      <div id="browseResultsPanel" style="display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" style="width:14px;height:14px;flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="browseSearch" placeholder="Search models..." oninput="renderBrowseModels()" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:12px;font-family:var(--mono);outline:none">
+          <span id="browseResultCount" style="font-size:12px;color:var(--text3);white-space:nowrap">0 models</span>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="browseProvider" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:12px;outline:none;min-width:140px"></select>
-          <button class="btn btn-sm" onclick="fetchProviderModels()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Fetch</button>
-          <span id="browseStatus" style="font-size:11px;color:var(--text3)"></span>
-        </div>
-        <div id="browseResults" style="display:none;margin-top:8px;max-height:300px;overflow-y:auto;border:1px solid var(--border2);border-radius:8px;padding:8px">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;margin-bottom:4px;border-bottom:1px solid var(--border2);padding-bottom:8px">
-            <span style="font-size:12px;color:var(--text3)"><span id="browseCount">0</span> models</span>
-            <div style="display:flex;gap:6px">
-              <button class="btn btn-sm" onclick="toggleAllBrowse()">Toggle All</button>
-              <button class="btn btn-sm btn-primary" onclick="addSelectedBrowse()">+ Add Selected</button>
-            </div>
-          </div>
-          <div id="browseList"></div>
+        <div id="browseModelList" style="max-height:400px;overflow-y:auto;border:1px solid var(--border2);border-radius:8px;padding:4px"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:4px 8px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);cursor:pointer">
+            <input type="checkbox" id="browseToggleAll" onchange="browseToggleAllChange()" style="accent-color:var(--accent)"> Select all
+          </label>
+          <button class="btn btn-sm btn-primary" onclick="browseAddSelected()">+ Add Selected to Config</button>
         </div>
       </div>
     </section>
@@ -731,7 +740,7 @@ tbody tr:hover{background:var(--surface2);}
 const API = '';
 let eventSource = null;
 const logBuf = [];
-const pages = {dashboard:'Overview & stats',requests:'Request history',config:'Settings & credentials',models:'Model mappings',log:'Real-time proxy log',history:'Browse by date'};
+const pages = {dashboard:'Overview & stats',requests:'Request history',config:'Settings & credentials',models:'Model mappings',browse:'Browse & add models',log:'Real-time proxy log',history:'Browse by date'};
 const openDetails = new Set(); // tracks open detail rows by request.id
 const PER_PAGE = 25;
 
@@ -752,6 +761,7 @@ document.querySelectorAll('.nav-item').forEach(el => {
 function refreshTab(tab) {
   if (tab === 'requests') renderRequests();
   else if (tab === 'models') loadModels();
+  else if (tab === 'browse') { if (_browseProvider && window._fetchedModels[_browseProvider]) { document.getElementById('browseResultsPanel').style.display = 'block'; renderBrowseModels(); } }
   else if (tab === 'dashboard') reloadAll();
   else if (tab === 'history') { loadSessionDates(); loadSessions(); }
 }
@@ -1250,84 +1260,71 @@ async function loadModels() {
 }
 function addModelRow() { addRow('','',''); }
 
-// ---- Browse Provider Models ----
-window._fetchedModels = {};
-window._toggledModels = {};
-
-function initBrowsePanel() {
-  const sel = document.getElementById('browseProvider');
-  if (!sel) return;
-  sel.innerHTML = PROVIDER_OPTIONS.filter(o => o.value).map(o => '<option value="'+o.value+'">'+o.label+'</option>').join('');
+// ---- Resolver Select Widget ----
+function createResolverSelect(models, value, onChange) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'rsel-wrap';
+  wrapper.style.cssText = 'position:relative;width:100%';
+  const hi = document.createElement('input');
+  hi.type = 'hidden'; hi.className = 'rsel-value'; hi.value = value || '';
+  wrapper.appendChild(hi);
+  const trigger = document.createElement('div');
+  trigger.className = 'rsel-trigger';
+  trigger.style.cssText = 'display:flex;align-items:center;gap:4px;padding:7px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--mono);cursor:pointer;outline:none;user-select:none;min-height:34px';
+  trigger.innerHTML = '<span class="rsel-text" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+(value?'var(--text)':'var(--text3)')+'">'+esc(value||'Select model...')+'</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0;color:var(--text3)"><polyline points="6 9 12 15 18 9"/></svg>';
+  wrapper.appendChild(trigger);
+  const menu = document.createElement('div');
+  menu.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;z-index:200;display:none;max-height:280px;overflow:hidden;margin-top:2px;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+  const search = document.createElement('input');
+  search.placeholder = 'Search models...';
+  search.style.cssText = 'width:100%;padding:6px 8px;border:none;border-bottom:1px solid var(--border2);background:transparent;color:var(--text);font-size:12px;font-family:var(--mono);outline:none';
+  menu.appendChild(search);
+  const list = document.createElement('div');
+  list.style.cssText = 'max-height:220px;overflow-y:auto';
+  menu.appendChild(list);
+  function renderList(filter) {
+    const filtered = filter ? models.filter(m => m.toLowerCase().includes(filter.toLowerCase())) : models;
+    list.innerHTML = filtered.map(m => {
+      const sel = m === hi.value;
+      return '<div class="rsel-item" data-model="'+esc(m)+'" style="display:flex;align-items:center;gap:6px;padding:5px 8px;cursor:pointer;font-size:12px;font-family:var(--mono);color:'+(sel?'var(--accent)':'var(--text2)')+';transition:background 0.12s'+(sel?';background:var(--accentDim)':'')+'">' +
+        (sel?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>':'<span style="width:12px;flex-shrink:0"></span>') +
+        esc(m) +
+      '</div>';
+    }).join('');
+    list.querySelectorAll('.rsel-item').forEach(el => {
+      el.onclick = function(e) {
+        e.stopPropagation();
+        const m = this.dataset.model;
+        hi.value = m;
+        trigger.querySelector('.rsel-text').textContent = m;
+        trigger.querySelector('.rsel-text').style.color = 'var(--text)';
+        menu.style.display = 'none';
+        if (onChange) onChange(m);
+      };
+    });
+  }
+  renderList('');
+  wrapper.appendChild(menu);
+  trigger.onclick = function(e) {
+    e.stopPropagation();
+    const open = menu.style.display === 'block';
+    menu.style.display = open ? 'none' : 'block';
+    if (!open) { search.value = ''; renderList(''); setTimeout(() => search.focus(), 50); }
+  };
+  search.oninput = function() { renderList(this.value); };
+  search.onkeydown = function(e) {
+    if (e.key === 'Escape') { menu.style.display = 'none'; }
+    else if (e.key === 'Enter') { const fi = list.querySelector('.rsel-item'); if (fi) fi.click(); }
+  };
+  wrapper.updateModels = function(newModels) { models = newModels || []; renderList(search.value); };
+  return wrapper;
 }
 
-async function fetchProviderModels() {
-  const provider = document.getElementById('browseProvider').value;
-  if (!provider) { toast('Select a provider first', true); return; }
-  const status = document.getElementById('browseStatus');
-  status.textContent = 'Fetching...';
-  try {
-    const res = await api('POST', '/api/provider-models', { provider });
-    if (res && res.models) {
-      window._fetchedModels[provider] = res.models;
-      if (!window._toggledModels[provider]) window._toggledModels[provider] = [...res.models];
-      const container = document.getElementById('browseResults');
-      const list = document.getElementById('browseList');
-      const count = document.getElementById('browseCount');
-      container.style.display = 'block';
-      const models = res.models;
-      const toggled = window._toggledModels[provider];
-      count.textContent = models.length;
-      list.innerHTML = models.map(m => {
-        const checked = toggled.includes(m);
-        return '<label style="display:flex;align-items:center;gap:8px;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:12px;font-family:var(--mono);color:var(--text2);transition:background 0.12s" onmouseenter="this.style.background=\'var(--surface1)\'" onmouseleave="this.style.background=\'\'">' +
-          '<input type="checkbox" class="browse-cb" '+(checked?'checked':'')+' data-model="'+esc(m)+'" style="accent-color:var(--accent)">' +
-          esc(m) +
-        '</label>';
-      }).join('');
-      list.querySelectorAll('.browse-cb').forEach(cb => {
-        cb.onchange = function() {
-          const p = document.getElementById('browseProvider').value;
-          if (!window._toggledModels[p]) window._toggledModels[p] = [];
-          if (this.checked) { if (!window._toggledModels[p].includes(this.dataset.model)) window._toggledModels[p].push(this.dataset.model); }
-          else { window._toggledModels[p] = window._toggledModels[p].filter(m => m !== this.dataset.model); }
-        };
-      });
-      status.textContent = models.length + ' models loaded';
-    } else status.textContent = 'Failed to load models';
-  } catch (e) { status.textContent = 'Error: ' + e.message; }
-}
-
-function toggleAllBrowse() {
-  const provider = document.getElementById('browseProvider').value;
-  if (!provider) return;
-  const models = window._fetchedModels[provider] || [];
-  const cbs = document.querySelectorAll('#browseList .browse-cb');
-  const anyUnchecked = Array.from(cbs).some(cb => !cb.checked);
-  window._toggledModels[provider] = anyUnchecked ? [...models] : [];
-  cbs.forEach(cb => cb.checked = anyUnchecked);
-}
-
-function addSelectedBrowse() {
-  const provider = document.getElementById('browseProvider').value;
-  if (!provider) return;
-  const toggled = window._toggledModels[provider] || [];
-  if (toggled.length === 0) { toast('No models selected', true); return; }
-  const existing = new Set(Array.from(document.querySelectorAll('#modelsBody tr')).map(tr => {
-    const inp = tr.querySelectorAll('input'); return inp[0]?.value+'|'+inp[1]?.value;
-  }));
-  let added = 0;
-  toggled.forEach(model => {
-    const key = model+'|'+model;
-    if (!existing.has(key)) { addRow(model, model, provider); existing.add(key); added++; }
-  });
-  toast('Added '+added+' model'+(added!==1?'s':''));
-}
-
+// ---- Provider Select ----
 function createProviderSelect(selected, onChange) {
   const wrapper = document.createElement('div');
   wrapper.style.cssText = 'position:relative;width:100%';
   wrapper.className = 'psel-wrap';
-
   const sel = document.createElement('select');
   sel.style.cssText = 'position:absolute;opacity:0;width:0;height:0;pointer-events:none';
   PROVIDER_OPTIONS.forEach(o => {
@@ -1337,7 +1334,6 @@ function createProviderSelect(selected, onChange) {
     sel.appendChild(opt);
   });
   wrapper.appendChild(sel);
-
   const cur = PROVIDER_OPTIONS.find(o => o.value === selected) || PROVIDER_OPTIONS[0];
   const trigger = document.createElement('div');
   trigger.className = 'psel-trigger';
@@ -1345,11 +1341,9 @@ function createProviderSelect(selected, onChange) {
   const curMeta = cur.value ? PROVIDER_META[cur.value] : null;
   trigger.innerHTML = (curMeta?logoHtml(curMeta,14):'')+'<span style="flex:1">'+cur.label+'</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;color:var(--text3)"><polyline points="6 9 12 15 18 9"/></svg>';
   wrapper.appendChild(trigger);
-
   const menu = document.createElement('div');
   menu.className = 'psel-menu';
   menu.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;z-index:200;display:none;max-height:220px;overflow-y:auto;margin-top:2px;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
-
   PROVIDER_OPTIONS.forEach(o => {
     const item = document.createElement('div');
     item.style.cssText = 'display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:pointer;font-size:12px;color:var(--text);transition:background 0.12s';
@@ -1361,50 +1355,42 @@ function createProviderSelect(selected, onChange) {
       e.stopPropagation();
       const nm = o.value ? PROVIDER_META[o.value] : null;
       trigger.innerHTML = (nm?logoHtml(nm,14):'')+'<span style="flex:1">'+o.label+'</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;color:var(--text3)"><polyline points="6 9 12 15 18 9"/></svg>';
-      menu.style.display = 'none';
-      sel.value = o.value;
+      menu.style.display = 'none'; sel.value = o.value;
       if (onChange) onChange(o.value);
     };
     menu.appendChild(item);
   });
   wrapper.appendChild(menu);
-
   trigger.onclick = (e) => { e.stopPropagation(); menu.style.display = menu.style.display === 'none' ? 'block' : 'none'; };
   return wrapper;
 }
 
+// ---- Row Builder ----
 function addRow(k, v, provider) {
   const tr = document.createElement('tr');
-
   const td1 = document.createElement('td');
   td1.innerHTML = '<div style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" style="width:14px;height:14px;flex-shrink:0"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg><input class="model-input" value="'+esc(k)+'" placeholder="e.g. gemini-2.5-pro"></div>';
 
   const pMeta = provider ? PROVIDER_META[provider] : null;
   const resolverLogo = pMeta ? logoHtml(pMeta, 14) : '';
-  const dlId = 'dl-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
   const toggled = provider ? (window._toggledModels[provider] || []) : [];
-  const dlOpts = toggled.map(m => '<option value="'+esc(m)+'">').join('');
 
   const td2 = document.createElement('td');
-  td2.innerHTML = '<div style="display:flex;align-items:center;gap:4px"><span class="rlw" style="display:inline-flex;width:14px;height:14px;flex-shrink:0">'+resolverLogo+'</span><input class="model-input" list="'+dlId+'" value="'+esc(v)+'" placeholder="e.g. deepseek-ai/deepseek-v4-flash"><datalist id="'+dlId+'">'+dlOpts+'</datalist></div>';
+  td2.innerHTML = '<div style="display:flex;align-items:center;gap:4px"><span class="rlw" style="display:inline-flex;width:14px;height:14px;flex-shrink:0">'+resolverLogo+'</span></div>';
+  const rsel = createResolverSelect(toggled, v, function(val) {});
+  td2.firstChild.appendChild(rsel);
 
   const td3 = document.createElement('td');
   const psel = createProviderSelect(provider || '', function(val) {
     const rl = td2.querySelector('.rlw');
     const nm = val ? PROVIDER_META[val] : null;
     if (rl) rl.innerHTML = nm ? logoHtml(nm, 14) : '';
-    const inp = td2.querySelector('input');
-    const dl = td2.querySelector('datalist');
-    if (inp && dl) {
-      const tm = window._toggledModels[val] || [];
-      dl.innerHTML = tm.map(m => '<option value="'+esc(m)+'">').join('');
-    }
+    if (rsel.updateModels) rsel.updateModels(window._toggledModels[val] || []);
   });
   td3.appendChild(psel);
 
   const td4 = document.createElement('td');
   td4.innerHTML = '<button class="btn-icon" onclick="this.closest(\'tr\').remove()" data-tooltip="Remove">✕</button>';
-
   tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
   document.getElementById('modelsBody').appendChild(tr);
 }
@@ -1415,19 +1401,126 @@ async function saveModels() {
   document.querySelectorAll('#modelsBody tr').forEach(tr => {
     const inp = tr.querySelectorAll('input');
     const prov = tr.querySelector('.psel-wrap select');
-    const k = inp[0].value.trim(), v = inp[1].value.trim();
+    const rv = tr.querySelector('.rsel-value');
+    const k = inp[0].value.trim(), v = rv ? rv.value.trim() : '';
     const p = prov ? prov.value : '';
     if (!k || !v) return;
     if (p) {
       if (!providerModels[k]) providerModels[k] = {};
       providerModels[k][p] = v;
-    } else {
-      flat[k] = v;
-    }
+    } else { flat[k] = v; }
   });
   const payload = { ...flat };
   if (Object.keys(providerModels).length > 0) payload._provider_models = providerModels;
   try { const r = await api('POST','/api/models',payload); if (r.ok) { toast('Models saved and loaded'); loadModels(); } else toast('Save failed', true); } catch (e) { toast('Save failed: '+e.message, true); }
+}
+
+// ---- Browse Tab ----
+let _browseProvider = '';
+window._fetchedModels = {};
+window._toggledModels = {};
+
+function browseInit() {
+  const container = document.getElementById('browseProviderSelect');
+  if (!container) return;
+  container.innerHTML = '';
+  const psel = createProviderSelect('', function(val) { _browseProvider = val; });
+  container.appendChild(psel);
+}
+
+async function browseFetch() {
+  const provider = _browseProvider;
+  if (!provider) { toast('Select a provider first', true); return; }
+  const status = document.getElementById('browseFetchStatus');
+  status.textContent = 'Fetching...';
+  document.getElementById('browseResultsPanel').style.display = 'none';
+  const apiKey = document.getElementById('browseApiKey').value.trim() || undefined;
+  try {
+    const res = await api('POST', '/api/provider-models', { provider, apiKey });
+    if (res && res.models) {
+      window._fetchedModels[provider] = res.models;
+      if (!window._toggledModels[provider]) window._toggledModels[provider] = [...res.models];
+      document.getElementById('browseResultsPanel').style.display = 'block';
+      renderBrowseModels();
+      status.textContent = res.models.length + ' models loaded';
+    } else status.textContent = 'Failed';
+  } catch (e) { status.textContent = 'Error: ' + e.message; }
+}
+
+function renderBrowseModels() {
+  const filter = document.getElementById('browseSearch').value.trim().toLowerCase();
+  const list = document.getElementById('browseModelList');
+  const count = document.getElementById('browseResultCount');
+  const provider = _browseProvider;
+  const meta = PROVIDER_META[provider];
+  const logo = meta ? logoHtml(meta, 14) : '';
+  const models = filter ? (window._fetchedModels[provider]||[]).filter(m => m.toLowerCase().includes(filter)) : (window._fetchedModels[provider]||[]);
+  const toggled = window._toggledModels[provider] || [];
+  count.textContent = models.length + ' model' + (models.length !== 1 ? 's' : '');
+  list.innerHTML = models.map(m => {
+    const checked = toggled.includes(m);
+    const existing = Array.from(document.querySelectorAll('#modelsBody tr')).some(tr => {
+      const inp = tr.querySelectorAll('input');
+      const rv = tr.querySelector('.rsel-value');
+      return inp[0]?.value === m || (rv && rv.value === m);
+    });
+    return '<label style="display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;font-family:var(--mono);color:var(--text2);transition:background 0.12s" onmouseenter="this.style.background=\'var(--surface1)\'" onmouseleave="this.style.background=\'\'">' +
+      '<input type="checkbox" class="browse-cb" '+(checked?'checked':'')+' data-model="'+esc(m)+'" style="accent-color:var(--accent)">' +
+      (logo||'') +
+      '<span style="flex:1;overflow:hidden;text-overflow:ellipsis">'+esc(m)+'</span>' +
+      (existing ? '<span style="font-size:10px;color:var(--green);white-space:nowrap">✓ in config</span>' : '') +
+    '</label>';
+  }).join('');
+  list.querySelectorAll('.browse-cb').forEach(cb => {
+    cb.onchange = function() {
+      if (!window._toggledModels[provider]) window._toggledModels[provider] = [];
+      if (this.checked) { if (!window._toggledModels[provider].includes(this.dataset.model)) window._toggledModels[provider].push(this.dataset.model); }
+      else { window._toggledModels[provider] = window._toggledModels[provider].filter(m => m !== this.dataset.model); }
+      updateToggleAllState();
+    };
+  });
+  updateToggleAllState();
+}
+
+function updateToggleAllState() {
+  const provider = _browseProvider;
+  const models = window._fetchedModels[provider] || [];
+  const toggled = window._toggledModels[provider] || [];
+  const ta = document.getElementById('browseToggleAll');
+  if (!ta) return;
+  const allChecked = models.length > 0 && models.every(m => toggled.includes(m));
+  ta.checked = allChecked;
+  ta.indeterminate = !allChecked && models.some(m => toggled.includes(m));
+}
+
+function browseToggleAllChange() {
+  const provider = _browseProvider;
+  const ta = document.getElementById('browseToggleAll');
+  const allModels = window._fetchedModels[provider] || [];
+  if (ta.checked) { window._toggledModels[provider] = [...allModels]; }
+  else { window._toggledModels[provider] = []; }
+  renderBrowseModels();
+}
+
+async function browseAddSelected() {
+  const provider = _browseProvider;
+  if (!provider) return;
+  const toggled = window._toggledModels[provider] || [];
+  if (toggled.length === 0) { toast('No models selected', true); return; }
+  const existing = new Set(Array.from(document.querySelectorAll('#modelsBody tr')).map(tr => {
+    const inp = tr.querySelectorAll('input');
+    const rv = tr.querySelector('.rsel-value');
+    return inp[0]?.value+'|'+(rv ? rv.value : '');
+  }));
+  let added = 0;
+  toggled.forEach(model => {
+    const key = model+'|'+model;
+    if (!existing.has(key)) { addRow(model, model, provider); existing.add(key); added++; }
+  });
+  if (added === 0) { toast('Models already in config'); return; }
+  toast('Added '+added+' model'+(added!==1?'s':'')+', saving...');
+  await saveModels();
+  switchTab('models');
 }
 
 // ---- Log ----
@@ -1472,7 +1565,7 @@ document.addEventListener('click', function(e) {
 });
 [document.getElementById('reqPagination')].forEach(el => { if (el) el.style.display='none'; });
 document.getElementById('historyDate').value = todayStr();
-reloadAll(); renderRequests(); loadModels(); connectSSE(); loadSessionDates(); initBrowsePanel();
+reloadAll(); renderRequests(); loadModels(); connectSSE(); loadSessionDates(); browseInit();
 api('GET','/api/logs').then(logs => { logs.forEach(e => { logBuf.push(e); appendLog(e, true); }); }).catch(()=>{});
 </script>
 </body>

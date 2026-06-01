@@ -44,7 +44,7 @@ export async function* streamResponse(
   const r = getRouter();
   const providerIds = config.providerPriority;
 
-  logger.info(`Routing: ${providerIds.join(' → ')} → ${model}`, {
+  logger.info(`Intercept: ${model}`, {
     messageCount: mapped.messages.length,
     hasTools: !!mapped.tools && Object.keys(mapped.tools).length > 0,
     hasSystem: !!mapped.system,

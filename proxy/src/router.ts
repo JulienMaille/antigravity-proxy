@@ -57,6 +57,8 @@ export class Router {
       return;
     }
 
+    logger.info(`[router] Candidates: ${candidates.join(' → ')} → ${model}`);
+
     for (const providerId of candidates) {
       const adapter = this.adapters.get(providerId);
       if (!adapter) {
