@@ -334,6 +334,15 @@ export function createDashboardHandler(): (req: http.IncomingMessage, res: http.
       return;
     }
 
+    if (url.pathname === '/api/requests/search' && method === 'GET') {
+      const q = (url.searchParams.get('q') || '').trim();
+      if (!q) { jsonResp(res, { rows: [], total: 0 }); return; }
+      const page = parseInt(url.searchParams.get('page') || '1', 10);
+      const perPage = parseInt(url.searchParams.get('per_page') || '50', 10);
+      jsonResp(res, requestStore.search(q, page, perPage));
+      return;
+    }
+
     // Session history (legacy — kept for log view access)
     if (url.pathname === '/api/sessions' && method === 'GET') {
       const date = (url.searchParams.get('date') || '').trim();

@@ -81,6 +81,13 @@ export function getRequestsByDate(date: string): any[] {
   return db.prepare("SELECT * FROM requests WHERE timestamp >= ? AND timestamp < ? ORDER BY timestamp DESC").all(date + 'T00:00:00', date + 'T23:59:59');
 }
 
+export function searchRequests(q: string, limit = 50, offset = 0): { rows: any[]; total: number } {
+  const pattern = `%${q}%`;
+  const countRow = db.prepare("SELECT COUNT(*) as total FROM requests WHERE model LIKE ? OR resolved_model LIKE ? OR provider LIKE ? OR type LIKE ? OR content LIKE ?").get(pattern, pattern, pattern, pattern, pattern) as any;
+  const rows = db.prepare("SELECT * FROM requests WHERE model LIKE ? OR resolved_model LIKE ? OR provider LIKE ? OR type LIKE ? OR content LIKE ? ORDER BY timestamp DESC LIMIT ? OFFSET ?").all(pattern, pattern, pattern, pattern, pattern, limit, offset);
+  return { rows, total: countRow.total };
+}
+
 export function clearRequests(): void {
   db.exec('DELETE FROM requests');
 }

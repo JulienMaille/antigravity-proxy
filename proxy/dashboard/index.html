@@ -1139,53 +1139,90 @@ async function loadRequestsByDate() {
   } catch (e) {}
 }
 
+let _histSearchData = [];
+let _histSearchTotal = 0;
+let _histSearchTimer = null;
+
 function filterHistory() {
-  _histPage = 1;
-  renderHistoryTable();
-  renderHistoryStats();
+  clearTimeout(_histSearchTimer);
+  _histSearchTimer = setTimeout(doFilterHistory, 300);
+}
+
+async function doFilterHistory() {
+  const q = (document.getElementById('historySearch').value||'').trim();
+  if (q) {
+    _histPage = 1;
+    await loadSearchResults(q, _histPage);
+  } else {
+    _histSearchData = [];
+    _histSearchTotal = 0;
+    _histPage = 1;
+    renderHistoryTable();
+    renderHistoryStats();
+  }
+}
+
+async function loadSearchResults(q, page) {
+  try {
+    const res = await api('GET', '/api/requests/search?q='+encodeURIComponent(q)+'&page='+page+'&per_page='+PER_PAGE);
+    _histSearchData = res.rows || [];
+    _histSearchTotal = res.total || 0;
+    renderHistoryTable();
+    renderHistoryStats();
+  } catch {}
 }
 
 function getFilteredHistory() {
-  const q = (document.getElementById('historySearch').value||'').toLowerCase();
-  if (!q) return _histAll;
+  const q = (document.getElementById('historySearch').value||'').trim();
+  if (q) return _histSearchData;
+  if (!_histAll) return [];
   return _histAll.filter(r =>
     (r.model||'').toLowerCase().includes(q) ||
     (r.resolved_model||'').toLowerCase().includes(q) ||
     (r.provider||'').toLowerCase().includes(q) ||
-    (r.type||'').toLowerCase().includes(q)
+    (r.type||'').toLowerCase().includes(q) ||
+    (r.content||'').toLowerCase().includes(q)
   );
 }
 
 function renderHistoryStats() {
+  const q = (document.getElementById('historySearch').value||'').trim();
   const all = getFilteredHistory();
   const statsEl = document.getElementById('historyStats');
-  if (all.length === 0) { statsEl.style.display = 'none'; return; }
+  const labelEl = document.getElementById('historyCount');
+  if (all.length === 0 && !(q && _histSearchTotal > 0)) { statsEl.style.display = 'none'; return; }
   statsEl.style.display = 'grid';
   const totalTokens = all.reduce((s, r) => s + (r.prompt_tokens||0) + (r.output_tokens||0), 0);
   const totalCost = all.reduce((s, r) => s + (r.cost||0), 0);
   const durations = all.filter(r => r.duration_ms);
   const avgDur = durations.length > 0 ? Math.round(durations.reduce((s, r) => s + (r.duration_ms||0), 0) / durations.length) : null;
-  document.getElementById('hsReqs').textContent = all.length;
+  const shown = all.length;
+  const total = q ? _histSearchTotal : all.length;
+  document.getElementById('hsReqs').textContent = shown + (shown!==total ? '/'+total : '');
   document.getElementById('hsTokens').textContent = totalTokens.toLocaleString();
   document.getElementById('hsCost').textContent = '$' + (totalCost < 0.0001 ? '0' : totalCost.toFixed(6));
   document.getElementById('hsDuration').textContent = avgDur ? avgDur + 'ms' : '—';
-  document.getElementById('historyCount').textContent = all.length + ' request' + (all.length!==1?'s':'') + ' on ' + _histDate;
+  labelEl.textContent = q ? `Search results: ${total} found` : (all.length + ' request' + (all.length!==1?'s':'') + ' on ' + _histDate);
 }
 
 function renderHistoryTable() {
   const c = document.getElementById('historyContent');
+  const q = (document.getElementById('historySearch').value||'').trim();
   const list = getFilteredHistory();
   if (list.length === 0) {
-    c.innerHTML = '<div class="empty-state"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><p>No requests on this date</p><p class="sub">Start the proxy and send requests to see them here.</p></div>';
+    const msg = q ? 'No results for "'+esc(q)+'"' : 'No requests on this date';
+    const sub = q ? 'Try a different search term.' : 'Start the proxy and send requests to see them here.';
+    c.innerHTML = '<div class="empty-state"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><p>'+msg+'</p><p class="sub">'+sub+'</p></div>';
     document.getElementById('historyPagination').style.display = 'none';
     document.getElementById('historyStats').style.display = 'none';
     return;
   }
-  const start = (_histPage-1)*PER_PAGE;
-  const pageItems = list.slice(start, start+PER_PAGE);
-  let html = '<div class="table-wrap"><table><thead><tr><th style="width:70px">Time</th><th style="width:60px">Provider</th><th>Model</th><th style="width:50px">Type</th><th style="width:70px">Tokens</th><th style="width:80px">Cost</th><th style="width:70px">Duration</th><th style="width:44px"></th></tr></thead><tbody>';
-  for (const r of pageItems) {
+  const showDate = !!q;
+  const cols = showDate ? '<th style="width:60px">Date</th><th style="width:70px">Time</th>' : '<th style="width:70px">Time</th>';
+  let html = '<div class="table-wrap"><table><thead><tr>'+cols+'<th style="width:60px">Provider</th><th>Model</th><th style="width:50px">Type</th><th style="width:70px">Tokens</th><th style="width:80px">Cost</th><th style="width:70px">Duration</th><th style="width:44px"></th></tr></thead><tbody>';
+  for (const r of list) {
     const ts = new Date(r.timestamp).toLocaleTimeString();
+    const ds = showDate ? r.timestamp.slice(0,10) : '';
     const meta = PROVIDER_META[r.provider] || {};
     const provHtml = meta.logo ? logoHtml(meta,14) : esc(r.provider||'—');
     const typeTag = `<span class="tag tag-${r.type==='error'?'error':r.type==='tool-call'?'tool':r.direction==='incoming'?'incoming':'outgoing'}"><span>${r.type||r.direction||'text'}</span></span>`;
@@ -1195,6 +1232,7 @@ function renderHistoryTable() {
     const rid = esc(r.id);
     const open = openDetails.has(r.id) ? '' : ' style="display:none"';
     html += `<tr>
+      ${showDate ? '<td style="font-size:11px;color:var(--text3);white-space:nowrap">'+ds+'</td>' : ''}
       <td style="font-size:11px;color:var(--text3);white-space:nowrap">${ts}</td>
       <td style="font-size:12px;white-space:nowrap">${provHtml}</td>
       <td style="font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.resolved_model||r.model)}">${esc(r.resolved_model||r.model||'—')}</td>
@@ -1205,7 +1243,7 @@ function renderHistoryTable() {
       <td><button class="btn btn-icon btn-ghost" onclick="toggleHistoryDetail('${rid}')" data-tooltip="Details">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 16 12 12 12 8"/></svg>
       </button></td></tr>
-      <tr id="hd-${rid}"${open}><td colspan="8"><div class="req-detail-inner">
+      <tr id="hd-${rid}"${open}><td colspan="${showDate?9:8}"><div class="req-detail-inner">
         <h4>Full Content</h4><pre>${esc(r.content||'—')}</pre>
         ${r.tool_calls ? '<h4 style="margin-top:14px">Tool Calls</h4><pre>'+esc(typeof r.tool_calls==='string'?r.tool_calls:JSON.stringify(r.tool_calls,null,2))+'</pre>' : ''}
         ${r.error ? '<h4 style="margin-top:14px;color:var(--red)">Error</h4><pre style="color:var(--red)">'+esc(r.error)+'</pre>' : ''}
@@ -1220,12 +1258,18 @@ function renderHistoryTable() {
 }
 
 function renderHistoryPagination() {
-  const total = getFilteredHistory().length;
+  const q = (document.getElementById('historySearch').value||'').trim();
+  const total = q ? _histSearchTotal : (getFilteredHistory()||[]).length;
   if (total <= PER_PAGE) { document.getElementById('historyPagination').style.display = 'none'; return; }
   renderPagination(document.getElementById('historyPagination'), _histPage, total, PER_PAGE, 'histGoPage');
 }
 
-function histGoPage(p) { _histPage = p; renderHistoryTable(); }
+function histGoPage(p) {
+  _histPage = p;
+  const q = (document.getElementById('historySearch').value||'').trim();
+  if (q) loadSearchResults(q, p);
+  else renderHistoryTable();
+}
 
 function toggleHistoryDetail(id) {
   const el = document.getElementById('hd-'+id);

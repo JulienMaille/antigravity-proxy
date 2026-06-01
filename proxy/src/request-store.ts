@@ -56,6 +56,11 @@ class RequestStore extends EventEmitter {
     return db.getRequestsByDate(date) as RequestRecord[];
   }
 
+  search(q: string, page: number = 1, perPage: number = 50): { rows: RequestRecord[]; total: number } {
+    const offset = (page - 1) * perPage;
+    return db.searchRequests(q, perPage, offset) as any;
+  }
+
   getStats(): { totalRequests: number; totalTokens: number; totalToolCalls: number; errors: number } {
     return db.getStats();
   }
