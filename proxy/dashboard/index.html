@@ -710,7 +710,7 @@ tbody tr:hover{background:var(--surface2);}
     <!-- Cost -->
     <section class="section" id="sec-cost">
       <div style="margin-bottom:16px">
-        <p style="font-size:13px;color:var(--text2)">Cost tracking across providers and models. All prices are per 1M tokens in USD. Hover charts for details.</p>
+        <p style="font-size:13px;color:var(--text2)">Usage and cost tracking. Charts show token consumption (per 1M tokens in USD). Hover for details. Set prices in the Pricing Config editor below.</p>
       </div>
 
       <div class="cost-summary" id="costSummary">
@@ -1678,8 +1678,11 @@ async function loadCostData() {
       return chart;
     }
 
-    // By Provider — Doughnut chart
-    const prov = (data.byProvider||[]).filter(r => Number(r.total_cost) > 0);
+    function sumTokens(r) { return (r.prompt_tokens||0)+(r.output_tokens||0); }
+    function costVal(r) { return Number(r.total_cost) || 0; }
+
+    // By Provider — Doughnut chart (tokens)
+    const prov = data.byProvider || [];
     const pLabels = prov.map(r => esc(r.key));
     const pColors = prov.map(r => {
       const meta = PROVIDER_META[r.key];
@@ -1691,7 +1694,7 @@ async function loadCostData() {
     });
     if (prov.length) {
       createCostChart('costByProviderChart', 'doughnut', pLabels, [{
-        data: prov.map(r => Number(r.total_cost) || 0),
+        data: prov.map(r => sumTokens(r) || costVal(r) || 1),
         backgroundColor: pColors,
         borderColor: pBorder,
         borderWidth: 2,
@@ -1701,29 +1704,33 @@ async function loadCostData() {
         plugins: {
           legend: { display: true, labels: { color: theme.text, boxWidth: 12, padding: 8, font: { size: 10 }, generateLabels: function(chart) {
             const data = chart.data;
-            return data.labels.map((label, i) => ({
-              text: label + '  ' + '$' + (Number(data.datasets[0].data[i]) || 0).toFixed(4),
-              fillStyle: data.datasets[0].backgroundColor[i],
-              strokeStyle: data.datasets[0].borderColor[i],
-              lineWidth: 2,
-              index: i,
-            }));
+            return data.labels.map((label, i) => {
+              const r = prov[i];
+              const tok = sumTokens(r);
+              return {
+                text: label + '  ' + (tok ? tok.toLocaleString()+' tok' : '$' + costVal(r).toFixed(4)),
+                fillStyle: data.datasets[0].backgroundColor[i],
+                strokeStyle: data.datasets[0].borderColor[i],
+                lineWidth: 2,
+                index: i,
+              };
+            });
           }}},
         },
       });
     } else {
-      document.getElementById('costByProviderChart').parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:13px">No cost data — send requests first</div>';
+      document.getElementById('costByProviderChart').parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:13px">No provider data yet</div>';
     }
     document.getElementById('costByProviderTable').innerHTML = buildCostTableHtml(data.byProvider, ['Provider','Requests','Tokens','Cost'], 'key', ['requests','tokens','cost']);
 
-    // By Model — Horizontal Bar (top 10)
-    const models = (data.byModel||[]).filter(r => Number(r.total_cost) > 0).sort((a, b) => (b.total_cost||0) - (a.total_cost||0)).slice(0, 10);
+    // By Model — Horizontal Bar (top 10 by tokens)
+    const models = (data.byModel||[]).sort((a, b) => sumTokens(b) - sumTokens(a)).slice(0, 10);
     if (models.length) {
       createCostChart('costByModelChart', 'bar', models.map(r => {
         const label = r.key || 'unknown';
         return label.length > 28 ? label.slice(0, 25) + '...' : label;
       }).reverse(), [{
-        data: models.map(r => Number(r.total_cost) || 0).reverse(),
+        data: models.map(r => sumTokens(r)).reverse(),
         backgroundColor: models.map((_, i) => CHART_COLORS[i % CHART_COLORS.length] + '99').reverse(),
         borderColor: models.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]).reverse(),
         borderWidth: 1,
@@ -1731,24 +1738,24 @@ async function loadCostData() {
       }], {
         indexAxis: 'y',
         scales: {
-          x: { ticks: { color: theme.text, font: { size: 10 }, callback: (v) => '$' + Number(v).toFixed(4) }, grid: { color: theme.grid } },
+          x: { ticks: { color: theme.text, font: { size: 10 }, callback: (v) => Number(v) >= 1000 ? (Number(v)/1000).toFixed(1)+'k' : Number(v).toFixed(0) }, grid: { color: theme.grid } },
           y: { ticks: { color: theme.text, font: { size: 10, family: 'var(--mono)' } }, grid: { display: false } },
         },
         plugins: { legend: { display: false } },
       });
     } else {
-      document.getElementById('costByModelChart').parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:13px">No model cost data yet</div>';
+      document.getElementById('costByModelChart').parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:13px">No model data yet</div>';
     }
     document.getElementById('costByModelTable').innerHTML = buildCostTableHtml(data.byModel, ['Model','Requests','Tokens','Cost'], 'key', ['requests','tokens','cost']);
 
-    // By Day — Line chart
-    const days = (data.byDay||[]).filter(r => Number(r.total_cost) > 0).sort((a, b) => (a.key||'').localeCompare(b.key||''));
+    // By Day — Line chart (tokens)
+    const days = (data.byDay||[]).sort((a, b) => (a.key||'').localeCompare(b.key||''));
     if (days.length) {
       createCostChart('costByDayChart', 'line', days.map(r => {
         const d = r.key || '';
         return d.length > 10 ? d.slice(5) : d;
       }), [{
-        data: days.map(r => Number(r.total_cost) || 0),
+        data: days.map(r => sumTokens(r)),
         backgroundColor: theme.accent + '22',
         borderColor: theme.accent,
         borderWidth: 2,
@@ -1762,19 +1769,19 @@ async function loadCostData() {
       }], {
         scales: {
           x: { ticks: { color: theme.text, font: { size: 10 }, maxTicksLimit: 12 }, grid: { color: theme.grid } },
-          y: { ticks: { color: theme.text, font: { size: 10 }, callback: (v) => '$' + Number(v).toFixed(4) }, grid: { color: theme.grid } },
+          y: { ticks: { color: theme.text, font: { size: 10 }, callback: (v) => Number(v) >= 1000 ? (Number(v)/1000).toFixed(1)+'k' : Number(v).toFixed(0) }, grid: { color: theme.grid } },
         },
         plugins: {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (ctx) => '$' + Number(ctx.raw).toFixed(4) + '  (' + (days[ctx.dataIndex]?.requests||0) + ' req, ' + ((days[ctx.dataIndex]?.prompt_tokens||0)+(days[ctx.dataIndex]?.output_tokens||0)).toLocaleString() + ' tok)',
+              label: (ctx) => sumTokens(days[ctx.dataIndex]).toLocaleString() + ' tok' + (costVal(days[ctx.dataIndex]) ? '  ($' + costVal(days[ctx.dataIndex]).toFixed(4) + ')' : ''),
             },
           },
         },
       });
     } else {
-      document.getElementById('costByDayChart').parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:13px">No daily cost data yet</div>';
+      document.getElementById('costByDayChart').parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:13px">No daily data yet</div>';
     }
     document.getElementById('costByDayTable').innerHTML = buildCostTableHtml(data.byDay, ['Date','Requests','Tokens','Cost'], 'key', ['requests','tokens','cost']);
 

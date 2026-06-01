@@ -89,17 +89,6 @@ export function getRequestDates(): { date: string; count: number }[] {
   return db.prepare("SELECT substr(timestamp,1,10) as date, COUNT(*) as count FROM requests GROUP BY date ORDER BY date DESC").all() as any[];
 }
 
-export function getStats(): { totalRequests: number; totalTokens: number; totalToolCalls: number; errors: number } {
-  const row = db.prepare(`
-    SELECT COUNT(*) as totalRequests,
-           COALESCE(SUM(prompt_tokens + output_tokens),0) as totalTokens,
-           COALESCE(SUM(CASE WHEN tool_calls IS NOT NULL AND tool_calls != '' THEN 1 ELSE 0 END),0) as totalToolCalls,
-           COALESCE(SUM(CASE WHEN type = 'error' THEN 1 ELSE 0 END),0) as errors
-    FROM requests
-  `).get() as any;
-  return row;
-}
-
 export function insertLog(entry: { timestamp: string; level: string; msg: string; meta?: string }): number {
   const stmt = db.prepare('INSERT INTO logs (timestamp, level, msg, meta) VALUES (?, ?, ?, ?)');
   return stmt.run(entry.timestamp, entry.level, entry.msg, entry.meta || null).lastInsertRowid as number;
@@ -148,7 +137,22 @@ export function deleteSession(sessionId: string): void {
 
 export function getCostAggregation(period: 'day' | 'model' | 'provider'): any[] {
   const groupBy = period === 'day' ? "substr(timestamp,1,10)" : period === 'model' ? 'model' : 'provider';
-  return db.prepare(`SELECT ${groupBy} as key, COUNT(*) as requests, SUM(prompt_tokens) as prompt_tokens, SUM(output_tokens) as output_tokens, SUM(cost) as total_cost FROM requests WHERE cost > 0 GROUP BY ${groupBy} ORDER BY total_cost DESC`).all();
+  return db.prepare(`SELECT ${groupBy} as key, COUNT(*) as requests, SUM(prompt_tokens) as prompt_tokens, SUM(output_tokens) as output_tokens, SUM(cost) as total_cost FROM requests WHERE cost IS NOT NULL GROUP BY ${groupBy} ORDER BY total_cost DESC`).all();
+}
+
+export function getStats(): { totalRequests: number; totalTokens: number; totalToolCalls: number; errors: number; total_cost: number; prompt_tokens: number; output_tokens: number; requests: number } {
+  const row = db.prepare(`
+    SELECT COUNT(*) as totalRequests,
+           COALESCE(SUM(prompt_tokens + output_tokens),0) as totalTokens,
+           COALESCE(SUM(prompt_tokens),0) as prompt_tokens,
+           COALESCE(SUM(output_tokens),0) as output_tokens,
+           COALESCE(SUM(CASE WHEN tool_calls IS NOT NULL AND tool_calls != '' THEN 1 ELSE 0 END),0) as totalToolCalls,
+           COALESCE(SUM(CASE WHEN type = 'error' THEN 1 ELSE 0 END),0) as errors,
+           COALESCE(SUM(cost),0) as total_cost
+    FROM requests
+  `).get() as any;
+  row.requests = row.totalRequests;
+  return row;
 }
 
 
