@@ -49,6 +49,11 @@ if (-not (Test-Path 'node_modules')) {
   Write-Ok "Dependencies already installed (delete node_modules to reinstall)"
 }
 
+# -- Sync opencode versions --------------------------------------------------
+Write-Step "Syncing opencode version numbers"
+& "$ProxyDir\scripts\sync-opencode-versions.ps1"
+if ($LASTEXITCODE -eq 1) { Write-Ok "Updated" } else { Write-Ok "Up to date" }
+
 # -- Certificates -------------------------------------------------------------
 $certDir = Join-Path $ProxyDir 'certs'
 $certFile = Join-Path $certDir 'cert.pem'
@@ -64,7 +69,6 @@ if (-not (Test-Path $certFile)) {
 
 # Install self-signed cert into Windows Trusted Root store so Antigravity TLS verification passes
 Write-Step "Installing certificate to Windows Trusted Root store"
-# Compute SHA-1 thumbprint from PEM for duplicate check
 $lines = Get-Content $certFile -Encoding utf8
 $b64 = ($lines | Where-Object { $_ -notmatch '^-' }) -join ''
 $derBytes = [Convert]::FromBase64String($b64)
@@ -82,6 +86,49 @@ if (-not $alreadyTrusted) {
   }
 } else {
   Write-Ok "Certificate already trusted"
+}
+
+# -- Hosts file ---------------------------------------------------------------
+Write-Step "Setting up hosts entries"
+$hostsPath = "$env:SystemRoot\System32\drivers\etc\hosts"
+$hostEntries = @(
+  "127.0.0.1 cloudcode-pa.googleapis.com",
+  "127.0.0.1 daily-cloudcode-pa.googleapis.com"
+)
+$needsHosts = $false
+if (Test-Path $hostsPath) {
+  $hostsContent = Get-Content -Path $hostsPath -Raw -ErrorAction SilentlyContinue
+  if ([string]::IsNullOrEmpty($hostsContent)) {
+    $needsHosts = $true
+  } else {
+    foreach ($entry in $hostEntries) {
+      if ($hostsContent -notmatch [regex]::Escape($entry)) {
+        $needsHosts = $true
+        break
+      }
+    }
+  }
+} else {
+  $needsHosts = $true
+}
+if ($needsHosts) {
+  $choice = Read-Host "Add hosts entries to route Google APIs to local proxy? (Y/n)"
+  if ($choice -ne 'n' -and $choice -ne 'N') {
+    $backupPath = "$env:SystemRoot\System32\drivers\etc\hosts.antizenity.bak"
+    try { Copy-Item -Path $hostsPath -Destination $backupPath -Force } catch {}
+    $existing = ""
+    try { $existing = [System.IO.File]::ReadAllText($hostsPath) } catch {}
+    if ([string]::IsNullOrWhiteSpace($existing)) {
+      $existing = "# Copyright (c) 1993-2009 Microsoft Corp.`r`n#`r`n# This is a sample HOSTS file used by Microsoft TCP/IP for Windows.`r`n#`r`n# localhost name resolution is handled within DNS itself.`r`n`r`n127.0.0.1       localhost`r`n::1             localhost`r`n"
+    }
+    $existing = $existing.TrimEnd() + "`r`n" + ($hostEntries -join "`r`n") + "`r`n"
+    [System.IO.File]::WriteAllText($hostsPath, $existing, [System.Text.Encoding]::ASCII)
+    Write-Ok "Added hosts entries for Google APIs"
+  } else {
+    Write-Warn "Skipping hosts setup - Antigravity won't route through proxy"
+  }
+} else {
+  Write-Ok "Hosts entries already present"
 }
 
 # -- Kill old proxy -----------------------------------------------------------
@@ -105,7 +152,7 @@ Write-Step "Starting proxy"
 $logDir = Join-Path $ProxyDir 'logs'
 if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
 $logFile = Join-Path $logDir "proxy_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
-$logArgs = @("-NoExit", "-Command", "cd '$ProxyDir'; tsx src/index.ts 2>&1 | Tee-Object -FilePath '$logFile'")
+$logArgs = @("-NoExit", "-Command", "cd '$ProxyDir'; npx tsx src/index.ts 2>&1 | Tee-Object -FilePath '$logFile'")
 
 # Only request UAC elevation if we're not already admin.
 # The old code always used -Verb RunAs, which triggers a SECOND UAC prompt
@@ -168,9 +215,9 @@ if ($antigravityPath) {
 
 # -- Summary ------------------------------------------------------------------
 Write-Step "Ready!"
-Write-Info "  Dashboard: http://localhost:4000"
-Write-Info "  Proxy:     https://localhost:443 (TLS)"
-Write-Info "  Logs:      $logFile"
+Write-Info "  Dashboard:   http://localhost:4000"
+Write-Info "  Proxy:       https://localhost:443 (TLS)"
+Write-Info "  Logs:        $logFile"
 Write-Info ""
 Write-Info "  Configure providers, API keys, models, and pricing from the dashboard."
-Write-Info "  Press Ctrl+C in the proxy window to stop."
+Write-Info "  Press Ctrl+C in the proxy window, or run stop.ps1 to revert all changes."

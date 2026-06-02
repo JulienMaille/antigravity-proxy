@@ -82,6 +82,9 @@ export class ModelResolver {
     if (providerId && this.providerMap[model]?.[providerId]) {
       return this.providerMap[model][providerId];
     }
+    if (providerId && this.providerMap['default']?.[providerId]) {
+      return this.providerMap['default'][providerId];
+    }
     if (this.flatMap[model]) return this.flatMap[model];
     const short = model.replace(/^models\//, '');
     if (this.flatMap[short]) return this.flatMap[short];
@@ -123,6 +126,7 @@ export class ModelResolver {
       if (key === 'default' || key === stripped) continue;
       if (stripped.startsWith(key + '-')) return key;
     }
+    if (this.providerMap['default']) return Object.keys(this.providerMap['default']);
     return null;
   }
 

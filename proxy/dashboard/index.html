@@ -1736,6 +1736,7 @@ function toggleHistoryDetail(id) {
 const PROVIDER_META = {
   openrouter: { label: 'OpenRouter', color: '#84e', desc: 'Broad model selection', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openrouter.svg', logoMask: true },
   nvidia:     { label: 'NVIDIA',     color: '#4b8', desc: 'NVIDIA NIM API', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/nvidia.svg', logoMask: true },
+  opencode:   { label: 'OpenCode',   color: '#f90', desc: 'OpenCode Free Models (Zen API)', logo: 'https://opencode.ai/favicon.ico', logoMask: false },
   openai:     { label: 'OpenAI',     color: '#090', desc: 'Direct OpenAI API', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openai.svg', logoMask: true },
   groq:       { label: 'Groq',       color: '#e80', desc: 'Groq LPU inference', logo: 'https://www.groq.com/favicon.svg' },
   anthropic:  { label: 'Anthropic',  color: '#e48', desc: 'Claude models API', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/anthropic.svg', logoMask: true },
@@ -3190,7 +3191,7 @@ async function loadPricingConfig() {
 function renderPricingEditor(data) {
   const meta = data['$meta'] || {};
   document.getElementById('pricingAutoFree').checked = meta.autoFree !== false;
-  const providerIds = ['openrouter','nvidia','openai','groq','anthropic','google','zen','ollama','vllm','lmstudio'];
+  const providerIds = ['opencode','openrouter','nvidia','openai','groq','anthropic','google','zen','ollama','vllm','lmstudio'];
   let html = '';
   for (const pid of providerIds) {
     const pmeta = PROVIDER_META[pid] || { label: pid, color: '#888' };
@@ -3268,7 +3269,7 @@ function removePricingRow(btn) {
 function collectPricingFromEditor() {
   const data = { '$meta': _pricingData?.['$meta'] || { autoFree: true } };
   data['$meta'].autoFree = document.getElementById('pricingAutoFree').checked;
-  const providerIds = ['openrouter','nvidia','openai','groq','anthropic','google','zen','ollama','vllm','lmstudio'];
+  const providerIds = ['opencode','openrouter','nvidia','openai','groq','anthropic','google','zen','ollama','vllm','lmstudio'];
   for (const pid of providerIds) {
     const entries = {};
     const defIn = parseFloat(document.querySelector(`.pdef-in[data-provider="${pid}"]`)?.value) || 0;

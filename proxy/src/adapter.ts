@@ -5,10 +5,11 @@ import { ZenAdapter } from './adapters/zen.js';
 import { NvidiaAdapter } from './adapters/nvidia.js';
 import { AnthropicAdapter } from './adapters/anthropic.js';
 import { GoogleAdapter } from './adapters/google.js';
+import { OpenCodeAdapter } from './adapters/opencode.js';
 import { providerRegistry } from './provider-registry.js';
 import type { OpenAIMessage } from './mapper.js';
 
-export type ProviderId = 'nvidia' | 'openrouter' | 'openai' | 'groq' | 'anthropic' | 'google' | 'zen' | 'ollama' | 'vllm' | 'lmstudio' | (string & {});
+export type ProviderId = 'nvidia' | 'openrouter' | 'openai' | 'groq' | 'anthropic' | 'google' | 'zen' | 'ollama' | 'vllm' | 'lmstudio' | 'opencode' | (string & {});
 
 export interface ProviderConfig {
   id: ProviderId;
@@ -23,7 +24,7 @@ export interface ProviderConfig {
  * Legacy default provider configs — kept for backward compatibility.
  * New code should use the plugin system (providerRegistry) instead.
  */
-export const DEFAULT_PROVIDER_CONFIGS: Record<string, { baseUrl: string; adapterType: 'openai' | 'anthropic' | 'google'; envKey: string }> = {
+export const DEFAULT_PROVIDER_CONFIGS: Record<ProviderId, { baseUrl: string; adapterType: 'openai' | 'anthropic' | 'google' | 'opencode'; envKey: string }> = {
   nvidia:    { baseUrl: 'https://integrate.api.nvidia.com/v1',         adapterType: 'openai',    envKey: 'NVIDIA_API_KEY' },
   openrouter:{ baseUrl: 'https://openrouter.ai/api/v1',                adapterType: 'openai',    envKey: 'OPENROUTER_API_KEY' },
   openai:    { baseUrl: 'https://api.openai.com/v1',                   adapterType: 'openai',    envKey: 'OPENAI_API_KEY' },
@@ -34,6 +35,7 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<string, { baseUrl: string; adapter
   ollama:    { baseUrl: 'http://localhost:11434',                      adapterType: 'openai',    envKey: '' },
   vllm:      { baseUrl: 'http://localhost:8000',                       adapterType: 'openai',    envKey: '' },
   lmstudio:  { baseUrl: 'http://localhost:1234',                       adapterType: 'openai',    envKey: '' },
+  opencode:  { baseUrl: 'https://opencode.ai/zen/v1',                  adapterType: 'opencode',  envKey: 'OPENCODE_API_KEY' },
 };
 
 /**
@@ -77,6 +79,8 @@ export function createAdapter(cfg: ProviderConfig): ModelAdapter {
       return new AnthropicAdapter(baseUrl, apiKey);
     case 'google':
       return new GoogleAdapter(baseUrl, apiKey);
+    case 'opencode':
+      return new OpenCodeAdapter(baseUrl);
   }
 }
 

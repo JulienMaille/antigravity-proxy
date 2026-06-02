@@ -2,6 +2,12 @@
   "$meta": {
     "autoFree": true
   },
+  "opencode": {
+    "default": {
+      "input": 0.14,
+      "output": 0.28
+    }
+  },
   "openrouter": {
     "default": {
       "input": 0.5,
