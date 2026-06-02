@@ -10,11 +10,11 @@ const ENV_PATH = path.resolve(__dirname, '..', '.env');
 
 dotenv.config({ path: ENV_PATH });
 
-export type Provider = 'nvidia' | 'openrouter';
+export type Provider = 'nvidia' | 'openrouter' | 'opencode';
 
 function parsePriority(): ProviderId[] {
-  const raw = (process.env.PROVIDER_PRIORITY || 'openrouter,nvidia').split(',').map(s => s.trim().toLowerCase() as ProviderId);
-  return raw.length > 0 ? raw : ['openrouter', 'nvidia'];
+  const raw = (process.env.PROVIDER_PRIORITY || 'opencode,nvidia,openrouter').split(',').map(s => s.trim().toLowerCase() as ProviderId);
+  return raw.length > 0 ? raw : ['opencode', 'nvidia', 'openrouter'];
 }
 
 const ENV_KEY_OVERRIDES: Partial<Record<ProviderId, { apiKey?: string; baseUrl?: string }>> = {
@@ -62,6 +62,8 @@ function createConfig() {
     nvidiaBaseUrl: process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1',
     openrouterApiKey: process.env.OPENROUTER_API_KEY || '',
     openrouterBaseUrl: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+    opencodeBaseUrl: process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/v1',
+    opencodeApiKey: process.env.OPENCODE_API_KEY || '',
     proxyPort: parseInt(process.env.PROXY_PORT || '443', 10),
     apiPort: parseInt(process.env.API_PORT || '4000', 10),
     logLevel: process.env.LOG_LEVEL || 'info',
@@ -89,16 +91,20 @@ function createConfig() {
       this.providers = buildProviders(this.providerPriority, localProviders);
     },
     get isConfigured(): boolean {
-      return this.providers.some((p: ProviderConfig) => !!p.apiKey);
+      return this.providers.some((p: ProviderConfig) => !!p.apiKey || p.id === 'opencode');
     },
     get provider(): string {
       return this.legacyProvider;
     },
     get baseUrl(): string {
-      return this.legacyProvider === 'nvidia' ? this.nvidiaBaseUrl : this.openrouterBaseUrl;
+      if (this.legacyProvider === 'nvidia') return this.nvidiaBaseUrl;
+      if (this.legacyProvider === 'opencode') return this.opencodeBaseUrl;
+      return this.openrouterBaseUrl;
     },
     get apiKey(): string {
-      return this.legacyProvider === 'nvidia' ? this.nvidiaApiKey : this.openrouterApiKey;
+      if (this.legacyProvider === 'nvidia') return this.nvidiaApiKey;
+      if (this.legacyProvider === 'opencode') return this.opencodeApiKey;
+      return this.openrouterApiKey;
     },
     reload(): void {
       parseEnvFile();
@@ -107,6 +113,8 @@ function createConfig() {
       this.nvidiaBaseUrl = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
       this.openrouterApiKey = process.env.OPENROUTER_API_KEY || '';
       this.openrouterBaseUrl = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+      this.opencodeBaseUrl = process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/v1';
+      this.opencodeApiKey = process.env.OPENCODE_API_KEY || '';
       this.proxyPort = parseInt(process.env.PROXY_PORT || '443', 10);
       this.apiPort = parseInt(process.env.API_PORT || '4000', 10);
       this.logLevel = process.env.LOG_LEVEL || 'info';

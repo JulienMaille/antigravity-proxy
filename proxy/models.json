@@ -1,5 +1,8 @@
 {
   "_provider_models": {
+    "default": {
+      "opencode": "deepseek-v4-flash-free"
+    },
     "claude-opus-4-6": {
       "zen": "mimo-v2.5-free"
     },
@@ -58,5 +61,10 @@
       "nvidia": "minimaxai/minimax-m3",
       "zen": "nemotron-3-ultra-free"
     }
-  }
+  },
+  "deepseek-v4-flash-free": "deepseek-v4-flash-free",
+  "big-pickle": "big-pickle",
+  "minimax-m3-free": "minimax-m3-free",
+  "nemotron-3-super-free": "nemotron-3-super-free",
+  "qwen3.6-plus-free": "qwen3.6-plus-free"
 }

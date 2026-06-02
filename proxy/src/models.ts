@@ -27,6 +27,7 @@ export class ModelResolver {
       "gemini-3.5-flash-low": "deepseek-ai/deepseek-v4-flash",
       "gemini-3.5-flash-medium": "deepseek-ai/deepseek-v4-flash",
       "gemini-3.5-flash-high": "deepseek-ai/deepseek-v4-flash",
+      "gemini-3.5-flash-extra-low": "deepseek-ai/deepseek-v4-flash",
       "gemini-3-flash-agent": "deepseek-ai/deepseek-v4-flash",
       "gemini-3.1-flash-lite": "deepseek-ai/deepseek-v4-flash",
       "gemini-3.1-flash": "deepseek-ai/deepseek-v4-flash",
@@ -78,6 +79,9 @@ export class ModelResolver {
     if (providerId && this.providerMap[model]?.[providerId]) {
       return this.providerMap[model][providerId];
     }
+    if (providerId && this.providerMap['default']?.[providerId]) {
+      return this.providerMap['default'][providerId];
+    }
     if (this.flatMap[model]) return this.flatMap[model];
     const short = model.replace(/^models\//, '');
     if (this.flatMap[short]) return this.flatMap[short];
@@ -96,6 +100,7 @@ export class ModelResolver {
     for (const key of Object.keys(this.providerMap)) {
       if (short.startsWith(key) || key.startsWith(short)) return Object.keys(this.providerMap[key]);
     }
+    if (this.providerMap['default']) return Object.keys(this.providerMap['default']);
     return null;
   }
 

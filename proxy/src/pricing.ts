@@ -22,7 +22,7 @@ type PricingData = Record<string, ProviderPricing | PricingMeta>;
 let pricingData: PricingData = {};
 let meta: PricingMeta = {};
 
-const DEFAULT_FREE_PROVIDERS = ['nvidia', 'ollama', 'vllm', 'lmstudio'];
+const DEFAULT_FREE_PROVIDERS = ['opencode', 'nvidia', 'ollama', 'vllm', 'lmstudio'];
 
 function load(): void {
   try {
