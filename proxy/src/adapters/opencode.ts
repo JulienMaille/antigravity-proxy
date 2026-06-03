@@ -3,6 +3,7 @@ import type { OpenAIMessage } from '../mapper.js';
 import type { StreamChunk, ModelAdapter } from './types.js';
 import { poolFetch } from '../http-pool.js';
 import { logger } from '../logger.js';
+import { fetchWithProxyFallback, startProxyPool, isProxyPoolEnabled, reportFailure } from '../proxy-pool.js';
 
 const OC_VERSION = '1.17.6';
 let cachedModels: string[] | null = null;
@@ -108,9 +109,17 @@ export class OpenCodeAdapter implements ModelAdapter {
     try {
       let doneFlag = false;
       while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        let chunkValue: Uint8Array;
+        try {
+          const result = await reader.read();
+          if (result.done) break;
+          chunkValue = result.value;
+        } catch (err: any) {
+          reportFailure();
+          throw new Error(`Connection lost mid-stream: ${err.message}`);
+        }
+
+        buffer += decoder.decode(chunkValue, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
         for (const line of lines) {
@@ -175,13 +184,19 @@ export class OpenCodeAdapter implements ModelAdapter {
     }
   }
 
+  private proxyPoolInitialized = false;
+
   private async zenFetch(
     body: Record<string, unknown>,
     sessionId: string,
     requestId: string,
     signal?: AbortSignal,
   ): Promise<Response> {
-    const response = await poolFetch(`${this.baseUrl}/chat/completions`, {
+    if (!this.proxyPoolInitialized && isProxyPoolEnabled()) {
+      startProxyPool();
+      this.proxyPoolInitialized = true;
+    }
+    const response = await fetchWithProxyFallback(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -211,7 +226,10 @@ export class OpenCodeAdapter implements ModelAdapter {
   }
 
   private parseToolArgs(raw: string): Record<string, unknown> {
-    try { return JSON.parse(raw); } catch { return {}; }
+    try { return JSON.parse(raw); } catch (e: any) {
+      logger.warn(`[opencode] Failed to parse tool args: ${e.message}`, { snippet: raw.slice(0, 200) });
+      return {};
+    }
   }
 
   static async fetchModels(baseUrl?: string): Promise<string[]> {
@@ -219,7 +237,9 @@ export class OpenCodeAdapter implements ModelAdapter {
     if (cachedModels && now - cacheTime < CACHE_TTL) return cachedModels;
     const url = ((baseUrl || 'https://opencode.ai/zen/v1').replace(/\/+$/, '')) + '/models';
     try {
-      const res = await poolFetch(url, { headers: { 'Authorization': 'Bearer public' } });
+      const res = isProxyPoolEnabled()
+        ? await fetchWithProxyFallback(url, { headers: { 'Authorization': 'Bearer public' } })
+        : await poolFetch(url, { headers: { 'Authorization': 'Bearer public' } });
       if (res.ok) {
         const data = await res.json() as any;
         cachedModels = (data.data || []).map((m: any) => m.id);

@@ -7,6 +7,7 @@ import { AnthropicAdapter } from './adapters/anthropic.js';
 import { GoogleAdapter } from './adapters/google.js';
 import { OpenCodeAdapter } from './adapters/opencode.js';
 import { providerRegistry } from './provider-registry.js';
+import { logger } from './logger.js';
 import type { OpenAIMessage } from './mapper.js';
 
 export type ProviderId = 'nvidia' | 'openrouter' | 'openai' | 'groq' | 'anthropic' | 'google' | 'zen' | 'ollama' | 'vllm' | 'lmstudio' | 'opencode' | (string & {});
@@ -59,7 +60,9 @@ export function createAdapter(cfg: ProviderConfig): ModelAdapter {
   // Legacy fallback for providers not yet registered as plugins
   const defaults = DEFAULT_PROVIDER_CONFIGS[cfg.id];
   if (!defaults) {
-    throw new Error(`Unknown provider: ${cfg.id}. Register a plugin first.`);
+    // Unknown provider (e.g. auto-discovered LiteLLM, LocalAI) — fall back to generic OpenAI-compatible
+    logger.info(`[adapter] Unknown provider "${cfg.id}", using generic OpenAI-compatible adapter`);
+    return new OpenAICompatAdapter(cfg.id, cfg.baseUrl || 'http://localhost:4000', cfg.apiKey || '');
   }
   const baseUrl = cfg.baseUrl || defaults.baseUrl;
   const apiKey = cfg.apiKey || '';

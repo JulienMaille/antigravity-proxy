@@ -389,16 +389,17 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
     : stripSystemContext(rawSystemText);
 
   const bodyStr = body.toString('utf-8');
+  const bodyKb = (body.length / 1024).toFixed(1);
   logger.info(`>>> INTERCEPTED: ${req.url} model=${model}`, {
     model, contentCount: contents.length, hasTools: tools.length > 0,
-    bodySnippet: bodyStr.substring(0, 200),
+    bodyKb, bodySnippet: bodyStr.substring(0, 500),
   });
 
   // Estimate prompt tokens from input
   const promptText = JSON.stringify(request);
   const promptTokens = estTokens(promptText);
 
-  const mapped = mapContentsToMessages(contents, systemInstruction);
+  const mapped = mapContentsToMessages(contents, systemInstruction, responseId);
   const mappedTools = mapTools(tools);
   const cfg = mapGenerationConfig(genConfig);
   Object.assign(mapped, cfg);

@@ -64,6 +64,7 @@ function createConfig() {
     openrouterBaseUrl: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
     opencodeBaseUrl: process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/v1',
     opencodeApiKey: process.env.OPENCODE_API_KEY || '',
+    opencodeUseProxyPool: process.env.OPENCODE_USE_PROXY_POOL !== 'false',
     proxyPort: parseInt(process.env.PROXY_PORT || '443', 10),
     apiPort: parseInt(process.env.API_PORT || '4000', 10),
     logLevel: process.env.LOG_LEVEL || 'info',

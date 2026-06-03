@@ -7,6 +7,8 @@
 #>
 
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 $ScriptDir = Split-Path -Parent $PSCommandPath
 $ProxyDir = Join-Path $ScriptDir 'proxy'
 
@@ -21,12 +23,8 @@ function Write-Step  { Write-Host "`n==> $args" -Foreground Magenta }
 $IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $IsAdmin) {
   Write-Warn "Proxy needs Administrator privileges to bind port 443."
-  $choice = Read-Host "Restart as Administrator? (Y/n)"
-  if ($choice -ne 'n' -and $choice -ne 'N') {
-    Start-Process powershell -Verb RunAs -ArgumentList "-NoExit -Command Set-Location '$ScriptDir'; & '$PSCommandPath'"
-    exit
-  }
-  Write-Warn "Running without Admin rights - port 443 may fail."
+  Start-Process powershell -Verb RunAs -ArgumentList "-NoExit -Command Set-Location '$ScriptDir'; & '$PSCommandPath'"
+  exit
 }
 
 # -- Prerequisites ------------------------------------------------------------
@@ -41,13 +39,9 @@ Set-Location -LiteralPath $ProxyDir
 
 # -- npm install --------------------------------------------------------------
 Write-Step "Installing dependencies"
-if (-not (Test-Path 'node_modules')) {
-  npm install
-  if ($LASTEXITCODE -ne 0) { Write-Err "npm install failed"; exit 1 }
-  Write-Ok "Dependencies installed"
-} else {
-  Write-Ok "Dependencies already installed (delete node_modules to reinstall)"
-}
+npm install
+if ($LASTEXITCODE -ne 0) { Write-Err "npm install failed"; exit 1 }
+Write-Ok "Dependencies installed"
 
 # -- Sync opencode versions --------------------------------------------------
 Write-Step "Syncing opencode version numbers"
