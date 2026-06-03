@@ -62,6 +62,28 @@ if (-not (Test-Path $certFile)) {
   Write-Ok "Certificates exist"
 }
 
+# Install self-signed cert into Windows Trusted Root store so Antigravity TLS verification passes
+Write-Step "Installing certificate to Windows Trusted Root store"
+# Compute SHA-1 thumbprint from PEM for duplicate check
+$lines = Get-Content $certFile -Encoding utf8
+$b64 = ($lines | Where-Object { $_ -notmatch '^-' }) -join ''
+$derBytes = [Convert]::FromBase64String($b64)
+$sha1 = [System.Security.Cryptography.SHA1]::Create().ComputeHash($derBytes)
+$thumbprint = [System.BitConverter]::ToString($sha1) -replace '-', ''
+$alreadyTrusted = Get-ChildItem Cert:\LocalMachine\Root -ErrorAction SilentlyContinue | Where-Object { $_.Thumbprint -eq $thumbprint }
+if (-not $alreadyTrusted) {
+  try {
+    Import-Certificate -FilePath $certFile -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+    Write-Ok "Certificate installed to Trusted Root store"
+  } catch {
+    Write-Warn "Could not install certificate (may already be trusted)."
+    Write-Warn "If Antigravity shows a TLS error, run as Administrator:"
+    Write-Warn "  certutil -addstore -f Root '$certFile'"
+  }
+} else {
+  Write-Ok "Certificate already trusted"
+}
+
 # -- Kill old proxy -----------------------------------------------------------
 $oldPid = (netstat -ano | Select-String ':4000 ' | ForEach-Object { ($_ -split '\s+')[-1] }) | Where-Object { $_ -ne '0' } | Select-Object -First 1
 if ($oldPid) {
