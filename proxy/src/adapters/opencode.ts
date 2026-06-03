@@ -3,6 +3,7 @@ import type { OpenAIMessage } from '../mapper.js';
 import type { StreamChunk, ModelAdapter } from './types.js';
 import { poolFetch } from '../http-pool.js';
 import { logger } from '../logger.js';
+import { fetchWithProxyFallback, startProxyPool, isProxyPoolEnabled } from '../proxy-pool.js';
 
 const OC_VERSION = '1.15.13';
 let cachedModels: string[] | null = null;
@@ -175,13 +176,19 @@ export class OpenCodeAdapter implements ModelAdapter {
     }
   }
 
+  private proxyPoolInitialized = false;
+
   private async zenFetch(
     body: Record<string, unknown>,
     sessionId: string,
     requestId: string,
     signal?: AbortSignal,
   ): Promise<Response> {
-    const response = await poolFetch(`${this.baseUrl}/chat/completions`, {
+    if (!this.proxyPoolInitialized && isProxyPoolEnabled()) {
+      startProxyPool();
+      this.proxyPoolInitialized = true;
+    }
+    const response = await fetchWithProxyFallback(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -219,7 +226,9 @@ export class OpenCodeAdapter implements ModelAdapter {
     if (cachedModels && now - cacheTime < CACHE_TTL) return cachedModels;
     const url = ((baseUrl || 'https://opencode.ai/zen/v1').replace(/\/+$/, '')) + '/models';
     try {
-      const res = await poolFetch(url, { headers: { 'Authorization': 'Bearer public' } });
+      const res = isProxyPoolEnabled()
+        ? await fetchWithProxyFallback(url, { headers: { 'Authorization': 'Bearer public' } })
+        : await poolFetch(url, { headers: { 'Authorization': 'Bearer public' } });
       if (res.ok) {
         const data = await res.json() as any;
         cachedModels = (data.data || []).map((m: any) => m.id);

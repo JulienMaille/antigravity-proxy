@@ -19,9 +19,11 @@
   "dependencies": {
     "ai": "^6.0.193",
     "better-sqlite3": "^12.10.0",
-    "undici": "^7.7.0",
     "dotenv": "^17.4.2",
-    "node-forge": "^1.4.0"
+    "hpagent": "^1.2.0",
+    "node-forge": "^1.4.0",
+    "socks-proxy-agent": "^8.0.5",
+    "undici": "^7.7.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

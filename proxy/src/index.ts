@@ -389,9 +389,10 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
     : stripSystemContext(rawSystemText);
 
   const bodyStr = body.toString('utf-8');
+  const bodyKb = (body.length / 1024).toFixed(1);
   logger.info(`>>> INTERCEPTED: ${req.url} model=${model}`, {
     model, contentCount: contents.length, hasTools: tools.length > 0,
-    bodySnippet: bodyStr.substring(0, 200),
+    bodyKb, bodySnippet: bodyStr.substring(0, 500),
   });
 
   // Estimate prompt tokens from input
@@ -543,7 +544,7 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
     }
 
     if (toolCalls.length > 0) {
-      logger.info(`<<< Completed: ${req.url} (${fullText.length} chars, ${toolCalls.length} tool calls)`, { toolCalls: toolCalls.map(tc => ({ name: tc.name, args: tc.args })) });
+      logger.info(`<<< Completed: ${req.url} (${fullText.length} chars, ${toolCalls.length} tool calls, ${duration}ms)`, { toolCalls: toolCalls.map(tc => ({ name: tc.name, args: tc.args })) });
       requestStore.push({
         id: responseId, timestamp: new Date().toISOString(), model, resolvedModel: usedModel || model,
         provider: usedProvider, direction: 'outgoing', type: 'tool-call', content: fullText,
@@ -551,7 +552,7 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
         promptTokens, outputTokens, cost, duration, failoverEvents: JSON.stringify(failoverEvents),
       });
     } else {
-      logger.info(`<<< Completed: ${req.url} (${fullText.length} chars, model: ${model}, provider: ${usedProvider})`);
+      logger.info(`<<< Completed: ${req.url} (${fullText.length} chars, model: ${model}, provider: ${usedProvider}, ${duration}ms)`);
       requestStore.push({
         id: responseId, timestamp: new Date().toISOString(), model, resolvedModel: usedModel || model,
         provider: usedProvider, direction: 'outgoing', type: 'text', content: fullText,
