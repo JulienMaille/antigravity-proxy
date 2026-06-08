@@ -85,7 +85,6 @@ async function resolveBackend(hostname: string): Promise<string> {
 // Dashboard handler for port 4000
 const dashboardHandler = createDashboardHandler();
 
-// Shared handler for port 4000: dashboard paths or Google forward
 function port4000Handler(req: http.IncomingMessage, res: http.ServerResponse): void {
   // Parse the URL to get the pathname (without query string). The dashboard's
   // own handler does the same, so we must match its routing exactly.
@@ -107,6 +106,17 @@ function port4000Handler(req: http.IncomingMessage, res: http.ServerResponse): v
     pathname.startsWith('/static/');
   if (isDashboardPath) {
     dashboardHandler(req, res);
+    return;
+  }
+  if (pathname === '/v1/chat/completions') {
+    let bodyChunks: Buffer[] = [];
+    req.on('data', chunk => bodyChunks.push(chunk));
+    req.on('end', () => {
+      const body = Buffer.concat(bodyChunks);
+      handleOpenAIChatCompletions(req, res, body).catch(err => {
+        logger.error('Error handling OpenAI chat completions', { error: err.message });
+      });
+    });
     return;
   }
   const hostname = 'cloudcode-pa.googleapis.com';
@@ -133,6 +143,199 @@ function genTraceId(): string {
   return Array.from({ length: 16 }, () => h[Math.floor(Math.random() * 16)]).join('');
 }
 function estTokens(t: string): number { return Math.max(1, Math.ceil(t.length / 4)); }
+
+async function handleOpenAIChatCompletions(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  body: Buffer,
+): Promise<void> {
+  let request: any;
+  try {
+    request = JSON.parse(body.toString('utf-8'));
+  } catch {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: { message: 'Invalid JSON body', code: 400 } }));
+    return;
+  }
+
+  const model = request.model || 'unknown';
+  const messages = request.messages || [];
+  const tools = request.tools || [];
+  const isStream = request.stream !== false;
+
+  logger.info(`>>> OpenAI API Intercepted: ${model}`, {
+    messageCount: messages.length,
+    hasTools: tools.length > 0,
+    stream: isStream,
+  });
+
+  const responseId = 'chatcmpl-' + genTraceId();
+  const created = Math.floor(Date.now() / 1000);
+
+  const mappedTools: Record<string, any> = {};
+  if (Array.isArray(tools)) {
+    for (const t of tools) {
+      if (t.type === 'function' && t.function) {
+        mappedTools[t.function.name] = {
+          description: t.function.description || '',
+          parameters: t.function.parameters || {},
+        };
+      }
+    }
+  }
+
+  if (isStream) {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    });
+  } else {
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+    });
+  }
+
+  try {
+    const generator = streamResponse(
+      {
+        messages,
+        tools: Object.keys(mappedTools).length > 0 ? mappedTools : undefined,
+        maxTokens: request.max_tokens || request.maxTokens,
+        temperature: request.temperature,
+        topP: request.top_p || request.topP,
+        stopSequences: typeof request.stop === 'string' ? [request.stop] : request.stop,
+      },
+      model,
+    );
+
+    let fullText = '';
+    const toolCalls: { id: string; type: 'function'; function: { name: string; arguments: string } }[] = [];
+    let toolCallIndex = 0;
+
+    for await (const chunk of generator) {
+      const ctype = (chunk as any).type as string;
+      if (ctype === 'attempt') continue;
+      
+      if (ctype === 'text') {
+        const content = (chunk as any).content || '';
+        fullText += content;
+        if (isStream) {
+          res.write(`data: ${JSON.stringify({
+            id: responseId,
+            object: 'chat.completion.chunk',
+            created,
+            model,
+            choices: [{
+              index: 0,
+              delta: { content },
+              finish_reason: null,
+            }],
+          })}\n\n`);
+        }
+      } else if (ctype === 'thought') {
+        const content = (chunk as any).content || '';
+        if (isStream) {
+          res.write(`data: ${JSON.stringify({
+            id: responseId,
+            object: 'chat.completion.chunk',
+            created,
+            model,
+            choices: [{
+              index: 0,
+              delta: { reasoning_content: content },
+              finish_reason: null,
+            }],
+          })}\n\n`);
+        }
+      } else if (ctype === 'tool-call') {
+        const tcId = `call_${genTraceId().substring(0, 8)}`;
+        const tc = {
+          id: tcId,
+          type: 'function' as const,
+          function: {
+            name: (chunk as any).name || 'unknown',
+            arguments: JSON.stringify((chunk as any).args || {}),
+          },
+        };
+        toolCalls.push(tc);
+
+        if (isStream) {
+          res.write(`data: ${JSON.stringify({
+            id: responseId,
+            object: 'chat.completion.chunk',
+            created,
+            model,
+            choices: [{
+              index: 0,
+              delta: {
+                tool_calls: [{
+                  index: toolCallIndex++,
+                  id: tcId,
+                  type: 'function',
+                  function: {
+                    name: (chunk as any).name,
+                    arguments: JSON.stringify((chunk as any).args || {}),
+                  },
+                }],
+              },
+              finish_reason: null,
+            }],
+          })}\n\n`);
+        }
+      }
+    }
+
+    if (isStream) {
+      res.write(`data: ${JSON.stringify({
+        id: responseId,
+        object: 'chat.completion.chunk',
+        created,
+        model,
+        choices: [{
+          index: 0,
+          delta: {},
+          finish_reason: toolCalls.length > 0 ? 'tool_calls' : 'stop',
+        }],
+      })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+    } else {
+      const choice: any = {
+        index: 0,
+        message: {
+          role: 'assistant',
+          content: fullText || null,
+        },
+        finish_reason: toolCalls.length > 0 ? 'tool_calls' : 'stop',
+      };
+      if (toolCalls.length > 0) {
+        choice.message.tool_calls = toolCalls;
+      }
+      res.end(JSON.stringify({
+        id: responseId,
+        object: 'chat.completion',
+        created,
+        model,
+        choices: [choice],
+        usage: {
+          prompt_tokens: 0,
+          completion_tokens: 0,
+          total_tokens: 0,
+        },
+      }));
+    }
+  } catch (err: any) {
+    logger.error(`<<< OpenAI Intercept Error: ${err.message}`);
+    if (isStream) {
+      res.write(`data: ${JSON.stringify({ error: { message: err.message, code: 500 } })}\n\n`);
+      res.end();
+    } else {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: { message: err.message, code: 500 } }));
+    }
+  }
+}
 
 const BULK_CONTEXT_TAGS = ['skills', 'plugins', 'user_rules'];
 
@@ -399,7 +602,8 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
   const promptText = JSON.stringify(request);
   const promptTokens = estTokens(promptText);
 
-  const mapped = mapContentsToMessages(contents, systemInstruction);
+  const responseId = genGoogleId();
+  const mapped = mapContentsToMessages(contents, systemInstruction, responseId);
   const mappedTools = mapTools(tools);
   const cfg = mapGenerationConfig(genConfig);
   Object.assign(mapped, cfg);
@@ -412,8 +616,6 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
   injectReasoning(mapped.messages, convId);
 
   logger.info(`  Provider priority: ${config.providerPriority.join(', ')}`);
-
-  const responseId = genGoogleId();
   const traceId = genTraceId();
 
   // Incoming record: log the prompt + the user-requested model.

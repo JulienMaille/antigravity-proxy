@@ -59,7 +59,7 @@ function selectProxy(): boolean {
         ? `socks5h://${p.address}`
         : `http://${p.address}`;
       current = { url, addr: p.address, proto: p.protocol as 'http' | 'socks5' };
-      logger.debug(`[proxy-pool] Selected ${p.address} (${p.protocol})`);
+      logger.info(`[proxy-pool] Selected proxy: ${p.address} (${p.protocol})`);
       return true;
     }
   }
@@ -204,6 +204,19 @@ export function startProxyPool(): void {
   loadPool().catch(() => {});
   refreshTimer = setInterval(() => loadPool().catch(() => {}), POLL_INTERVAL);
   logger.info('[proxy-pool] Started (refresh every 5 min)');
+}
+
+/**
+ * Report that the current proxy failed mid-stream. Blacklists it so the next
+ * request picks a different proxy instead of retrying the same failing one.
+ */
+export function reportFailure(): void {
+  if (current) {
+    const addr = current.addr;
+    drop(addr);
+    current = null;
+    logger.warn(`[proxy-pool] Reported mid-stream failure for ${addr}, blacklisted for next request`);
+  }
 }
 
 export function stopProxyPool(): void {

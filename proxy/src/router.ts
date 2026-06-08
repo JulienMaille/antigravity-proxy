@@ -131,6 +131,13 @@ export class Router {
           if (!isLastAttempt) {
             const elapsed = Date.now() - attemptStart;
             const isRateLimit = err.message.includes('429') || err.message.includes('rate_limit') || err.message.includes('413') || err.message.includes('Request too large');
+            const isClientError = /[45]0[0-9]/.test(err.message) && !isRateLimit;
+            if (isClientError) {
+              logger.warn(`[router] ${providerId} client error (not retryable), failing over: ${err.message}`);
+              fireFailoverWebhook(providerId, resolvedModel, err.message, 'failover');
+              yield { type: 'attempt', provider: providerId, resolvedModel, attempt: attempt + 1, status: 'failover' };
+              break;
+            }
             const waitMs = isRateLimit
               ? Math.min(10000 * Math.pow(2, attempt), 60000)
               : this.options.backoffMs * Math.pow(2, attempt);
@@ -199,6 +206,13 @@ export class Router {
             }
             if (!isLastAttempt) {
               const isRateLimit = err.message.includes('429') || err.message.includes('rate_limit') || err.message.includes('413') || err.message.includes('Request too large');
+              const isClientError = /[45]0[0-9]/.test(err.message) && !isRateLimit;
+              if (isClientError) {
+                logger.warn(`[router] ${providerId} (fallback) client error (not retryable), failing over: ${err.message}`);
+                fireFailoverWebhook(providerId, resolvedModel, err.message, 'failover');
+                yield { type: 'attempt', provider: providerId, resolvedModel, attempt: attempt + 1, status: 'failover', fallback: true };
+                break;
+              }
               const waitMs = isRateLimit ? Math.min(10000 * Math.pow(2, attempt), 60000) : this.options.backoffMs * Math.pow(2, attempt);
               logger.warn(`[router] ${providerId} (fallback) attempt ${attempt + 1}/${fallbackRetries + 1} failed, retry in ${waitMs}ms: ${err.message}`);
               await new Promise(r => setTimeout(r, waitMs));

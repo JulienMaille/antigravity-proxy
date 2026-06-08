@@ -1,11 +1,11 @@
-﻿import crypto from 'crypto';
+import crypto from 'crypto';
 import type { OpenAIMessage } from '../mapper.js';
 import type { StreamChunk, ModelAdapter } from './types.js';
 import { poolFetch } from '../http-pool.js';
 import { logger } from '../logger.js';
-import { fetchWithProxyFallback, startProxyPool, isProxyPoolEnabled } from '../proxy-pool.js';
+import { fetchWithProxyFallback, startProxyPool, isProxyPoolEnabled, reportFailure } from '../proxy-pool.js';
 
-const OC_VERSION = '1.15.13';
+const OC_VERSION = '1.16.2';
 let cachedModels: string[] | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 5 * 60 * 1000;
@@ -109,9 +109,17 @@ export class OpenCodeAdapter implements ModelAdapter {
     try {
       let doneFlag = false;
       while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        let chunkValue: Uint8Array;
+        try {
+          const result = await reader.read();
+          if (result.done) break;
+          chunkValue = result.value;
+        } catch (err: any) {
+          reportFailure();
+          throw new Error(`Connection lost mid-stream: ${err.message}`);
+        }
+
+        buffer += decoder.decode(chunkValue, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
         for (const line of lines) {
@@ -218,7 +226,10 @@ export class OpenCodeAdapter implements ModelAdapter {
   }
 
   private parseToolArgs(raw: string): Record<string, unknown> {
-    try { return JSON.parse(raw); } catch { return {}; }
+    try { return JSON.parse(raw); } catch (e: any) {
+      logger.warn(`[opencode] Failed to parse tool args: ${e.message}`, { snippet: raw.slice(0, 200) });
+      return {};
+    }
   }
 
   static async fetchModels(baseUrl?: string): Promise<string[]> {

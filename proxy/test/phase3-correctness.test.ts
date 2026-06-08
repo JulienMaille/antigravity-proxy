@@ -210,7 +210,11 @@ test('Phase 3 / B12: index.ts declares lastAttemptedProvider in scope of both tr
 test('Phase 3 / B12: index.ts catch block calls recordRequest(lastAttemptedProvider)', () => {
   const index = src('index.ts');
   // The catch block should have `if (lastAttemptedProvider) recordRequest(lastAttemptedProvider);`
-  const catchBlock = index.match(/catch\s*\([^)]*\)\s*\{[\s\S]{0,500}/);
+  // Search from after the lastAttemptedProvider declaration to avoid matching earlier catch blocks.
+  const declPos = index.search(/(let|const|var)\s+lastAttemptedProvider\s*=/);
+  assert.ok(declPos >= 0, 'index.ts should declare lastAttemptedProvider');
+  const after = index.slice(declPos);
+  const catchBlock = after.match(/catch\s*\([^)]*\)\s*\{[\s\S]{0,500}/);
   assert.ok(catchBlock, 'should find the catch block');
   assert.ok(
     /recordRequest\s*\(\s*lastAttemptedProvider\s*\)/.test(catchBlock![0]),

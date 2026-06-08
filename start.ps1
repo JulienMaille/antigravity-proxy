@@ -7,6 +7,8 @@
 #>
 
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 $ScriptDir = Split-Path -Parent $PSCommandPath
 $ProxyDir = Join-Path $ScriptDir 'proxy'
 

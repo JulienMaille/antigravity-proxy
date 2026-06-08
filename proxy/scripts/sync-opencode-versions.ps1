@@ -16,6 +16,8 @@
 #>
 
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 # ── Paths ──────────────────────────────────────────────────────────
 $adapterFile = "$PSScriptRoot\..\src\adapters\opencode.ts"
@@ -64,19 +66,19 @@ Write-Host "  bun runtime:       $newBunVersion"
 $changed = $false
 
 if ($currentOc -ne $newOcVersion) {
-    Write-Host "  → Updating OC_VERSION: $currentOc → $newOcVersion" -ForegroundColor Yellow
+    Write-Host "  -> Updating OC_VERSION: $currentOc -> $newOcVersion" -ForegroundColor Yellow
     $content = $content -replace "const OC_VERSION = '[\d.]+'", "const OC_VERSION = '$newOcVersion'"
     $changed = $true
 }
 
 if ($currentProviderUtils -ne $newProviderUtils) {
-    Write-Host "  → Updating provider-utils: $currentProviderUtils → $newProviderUtils" -ForegroundColor Yellow
+    Write-Host "  -> Updating provider-utils: $currentProviderUtils -> $newProviderUtils" -ForegroundColor Yellow
     $content = $content -replace "provider-utils/[\d.]+", "provider-utils/$newProviderUtils"
     $changed = $true
 }
 
 if ($currentBun -ne $newBunVersion) {
-    Write-Host "  → Updating bun runtime: $currentBun → $newBunVersion" -ForegroundColor Yellow
+    Write-Host "  -> Updating bun runtime: $currentBun -> $newBunVersion" -ForegroundColor Yellow
     $content = $content -replace "runtime/bun/[\d.]+", "runtime/bun/$newBunVersion"
     $changed = $true
 }

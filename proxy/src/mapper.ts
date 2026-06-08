@@ -44,11 +44,9 @@ export interface MappedConfig {
   providerOptions?: { openai?: { reasoningEffort?: string } };
 }
 
-function callId(name: string, idx: number): string {
-  const safeName = (name || 'tool')
-    .replace(/[^A-Za-z0-9_-]/g, '_')
-    .slice(0, 48);
-  return `call_${safeName}_${idx}`;
+function callId(name: string, idx: number, reqId?: string): string {
+  const safeName = (name || 'tool').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 48);
+  return reqId ? `call_${reqId}_${safeName}_${idx}` : `call_${safeName}_${idx}`;
 }
 
 function partToOpenAIPart(p: any): string | OpenAIImagePart | null {
@@ -80,9 +78,10 @@ function partToOpenAIPart(p: any): string | OpenAIImagePart | null {
   return null;
 }
 
-export function mapContentsToMessages(contents: Content[], systemInstruction?: string): MappedRequest {
+export function mapContentsToMessages(contents: Content[], systemInstruction?: string, reqId?: string): MappedRequest {
   const messages: OpenAIMessage[] = [];
   let callIndex = 0;
+  const requestId = reqId || Math.random().toString(36).slice(2, 8);
   const recentCallIds: Map<string, string[]> = new Map();
 
   for (const content of contents) {
@@ -123,7 +122,7 @@ export function mapContentsToMessages(contents: Content[], systemInstruction?: s
         const fc = p.functionCall || {};
         const name = fc.name || p.toolName || 'unknown';
         const args = parseJSONArgs(fc.args || p.args);
-        const id = callId(name, callIndex++);
+        const id = callId(name, callIndex++, requestId);
         const ids = recentCallIds.get(name) || [];
         ids.push(id);
         recentCallIds.set(name, ids);
@@ -138,7 +137,7 @@ export function mapContentsToMessages(contents: Content[], systemInstruction?: s
         const resultObj = fr.response || p.result || {};
         const contentStr = typeof resultObj === 'string' ? resultObj : JSON.stringify(parseJSONArgs(resultObj));
         const ids = recentCallIds.get(name) || [];
-        const id = ids.shift() || callId(name, callIndex++);
+        const id = ids.shift() || callId(name, callIndex++, requestId);
         messages.push({ role: 'tool', tool_call_id: id, content: contentStr });
       }
     } else if (imageParts.length > 0) {
@@ -241,7 +240,8 @@ function parseJSONArgs(args: Buffer | string | Record<string, unknown> | undefin
   try {
     const str = Buffer.isBuffer(args) ? args.toString('utf-8') : args;
     return JSON.parse(str);
-  } catch {
+  } catch (e: any) {
+    logger.warn(`[mapper] Failed to parse tool args JSON: ${e.message}`, { snippet: String(args).slice(0, 200) });
     return {};
   }
 }
