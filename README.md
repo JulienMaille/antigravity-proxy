@@ -34,9 +34,13 @@ The proxy intercepts Antigravity's Google Gemini API calls and translates them t
 ```powershell
 # Windows (PowerShell as Administrator)
 .\start.ps1
+```
 
-# macOS / Linux
-sudo node proxy/dist/index.js
+```bash
+# macOS / Linux  (⚠️ untested — report issues on GitHub)
+chmod +x start.sh
+./start.sh
+# or without root: ./start.sh --port 8443
 ```
 
 Then open **http://localhost:4000** in your browser to configure providers, model mappings, and view live stats.
@@ -314,6 +318,9 @@ FAILOVER_WEBHOOK_URL=https://hooks.example.com/webhook
 
 # Workspace context hardening (optional)
 WORKSPACE_CONTEXT_ENVELOPE=strict   # off | loose | strict (default: strict)
+
+# Inline context strip mode (optional)
+CONTEXT_STRIP_MODE=strip            # strip (default) | passthrough
 ```
 
 ---
@@ -324,7 +331,9 @@ WORKSPACE_CONTEXT_ENVELOPE=strict   # off | loose | strict (default: strict)
 - [Configuration Reference](docs/CONFIGURATION.md)
 - [Antigravity v2 Protocol Analysis](docs/antigravity-v2-analysis.md)
 - [CHANGELOG](CHANGELOG.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security Policy](SECURITY.md)
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

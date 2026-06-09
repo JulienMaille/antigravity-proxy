@@ -1,73 +1,181 @@
 # Changelog
 
 All notable changes to Antigravity Proxy are documented here.
-Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+Dates are UTC. Commit hashes are the actual merge commits on `main`.
 
 ---
 
-## [Unreleased]
-
-### Added
-- **Reasoning effort control** — new `Model Options` dashboard tab. Auto-detects DeepSeek R-series, NVIDIA stepfun, and OpenAI o-series models from your model map and lets you pin a `reasoning_effort` level (`low` / `medium` / `high` / `max`) per model. Settings persisted to `reasoning-effort.json`, applied in the OpenAI adapter on every matching request. Manual overrides supported for any resolved model name.
-- **OpenCode Zen provider** — fully wired: `PROVIDER_META`, `PROVIDER_OPTIONS`, API keys form, provider priority list, pricing editor, and `saveConfig()` all include Zen. Key env var: `OPENCODE_API_KEY`.
-- **Models tab matrix UI** — replaced the old flat 3-column table (model / resolved / provider) with a full per-provider matrix. One row per alias, one column per provider (Default + OpenRouter / NVIDIA / OpenAI / Groq / Anthropic / Google / Zen / Ollama / vLLM / LM Studio). Column visibility toggles, double-click cell for live model picker, quick-add preset rows for Claude / Gemini / GPT, cell color-coded by provider, sticky alias column.
-- **README rewrite** — corrected "Windows only" claim (proxy runs on any Node 18+ platform), documented all providers including Zen, added matrix UI guide, reasoning effort guide, full env var reference, complete architecture file tree.
-- **CHANGELOG** — this file.
+## [adef7e7] — 2026-06-10
 
 ### Fixed
-- Zen missing from `PROVIDER_META` caused it to show no logo/label anywhere in the UI.
-- `saveConfig()` did not send `OPENCODE_API_KEY`, so Zen key changes from Config tab were silently dropped.
-- Pricing editor did not include a Zen section.
-- `PROVIDER_OPTIONS` list did not include Zen, so it could not be selected in model dropdowns or the provider priority "Add Provider" picker.
-- `reasoning_effort` was only applied for `openai` and `zen` providers; it is now applied to all OpenAI-compat providers when a per-model effort is configured.
+- **`manage_task` schema was completely wrong** — the real tool manages background OS processes
+  (`Action: "list"|"kill"|"kill_all"|"status"|"send_input"`), not project tasks. The v2.1
+  `agent-context.md` documented fictional `"complete"/"update"/"create"` actions that do not exist,
+  causing non-Gemini models to loop on every task completion. Project task tracking is done via
+  `write_to_file(IsArtifact=true)`.
+- **`grep_search` param name wrong** — real param is `Includes` (array of globs), not `FilePattern` (string).
+- **`invoke_subagent` param name wrong** — real param is `Subagents` (array with `TypeName/Role/Prompt`).
+
+### Added
+- **agent-context.md v2.2** — complete and accurate tool reference for all Antigravity built-in tools:
+  `define_subagent`, `manage_subagents`, `send_message`, `read_url_content`, `ask_permission`,
+  `ask_question`, `list_permissions`, `generate_image`, `schedule`. Correct schemas, required fields
+  marked explicitly, error recovery table, shell/PowerShell rules.
+- **`antigravity-context.ts` updated** — inline system prompt expanded with correct `manage_task` schema
+  and full tool selection list so models know what's available on every request.
+
+---
+
+## [7045e55] — 2026-06-10
+
+### Added
+- **Dashboard: split prompt / output token stats** — stat grid expanded from 4 to 6 cards.
+  New "Prompt Tokens" (blue) and "Output Tokens" (purple) cards. Combined "Tokens" card
+  sub-label now shows `N in · M out` live.
+- **Inline Context Mode toggle** — new `CONTEXT_STRIP_MODE` env var (`strip` | `passthrough`,
+  default `strip`). `strip` removes Antigravity's `<skills>/<plugins>/<identity>` context
+  (~3,500–5,000 tokens saved per request). `passthrough` forwards everything unchanged.
+  Surfaced as a dropdown in Config tab → Provider section. Hot-reloaded on Save.
+- **agent-context.md v2.1** — rewrote tool reference with correct schemas for the 5
+  most-failure-prone tools (`manage_task`, `run_command`, `write_to_file`,
+  `replace_file_content`, `browser_action`). Added error recovery table and PowerShell rules.
+- **`antigravity-context.ts` inline schemas** — proxy system prompt now leads with critical
+  tool schemas so every model sees them before any tool call, without needing to read
+  `agent-context.md` first.
+
+### Fixed
+- **`manage_task` retry loop** — confirmed from production logs: model called `manage_task`
+  without `action` parameter 5 times in a row (22:31:09–22:31:21), each returning the same
+  error. Root cause: non-Gemini models have no training data for Antigravity's internal tool
+  schemas. Fix: document the schemas explicitly in the injected system prompt.
+- **PowerShell `&&` operator** — documented that `&&` does not work in PowerShell; use `;` instead.
+
+---
+
+## [5dd2cf5] — 2026-06-08
+
+### Added
+- **Reasoning effort control** — new `Model Options` dashboard tab. Auto-detects DeepSeek R-series,
+  NVIDIA stepfun, OpenAI o-series, Qwen/GLM/Kimi thinking models from your model map. Per-model
+  effort level (`low`/`medium`/`high`/`max`) persisted to `reasoning-effort.json`. Applied in
+  OpenAI adapter on every matching request. Manual overrides for any resolved model name.
+- **OpenCode Zen provider** — fully wired across all UI surfaces: `PROVIDER_META`, Config tab API
+  keys form (`cfgZenKey` + status badge), provider priority list, pricing editor, `saveConfig()`.
+  Env var: `OPENCODE_API_KEY`.
+- **Models tab matrix UI** — replaced the old flat 3-column table with a per-provider matrix.
+  One row per model alias, one column per provider (Default + OpenRouter / NVIDIA / OpenAI /
+  Groq / Anthropic / Google / Zen / Ollama / vLLM / LM Studio). Column visibility toggles,
+  double-click cell for live searchable model picker, quick-add presets (Claude / Gemini / GPT),
+  cell color-coded by provider, sticky alias column.
+- **Cross-platform launcher (`start.sh`)** — bash script for macOS and Linux with auto-detect
+  Node.js, cert generation, best-effort cert trust, old-process cleanup, `--port` flag.
+  Marked ⚠️ untested with "open GitHub issues" notice in README and script header.
+- **Platform support table** in README — Windows ✅ tested, macOS/Linux ⚠️ untested.
+- **`npm run build` script** added to `package.json` (was missing).
+- **`gen-certs.mjs`** creates `certs/` dir if missing (cross-platform fix).
+- **`.env.example`** updated with all supported variables and comments.
+- **Agent file corruption protection** — `workspace-context.ts` strict envelope extended with
+  7 FILE INTEGRITY RULES injected into the system prompt on every request.
+- **Session purging** — `auth-sessions.ts` now runs `purgeExpired()` every 30 minutes
+  (unref'd interval). Previously the session `Map` grew without bound.
+- **CHANGELOG** — this file.
+- **`start:prod` npm script** — runs from `dist/index.js` after `npm run build`.
+
+### Fixed
+- **Models tab save wiped data** — `saveModels()` dropped alias-only rows (entries that had
+  per-provider values but no default). Fixed: rows saved correctly to `_provider_models`.
+- **Models tab "No models configured"** — `renderMatrixTable()` only built rows from flat keys,
+  ignoring `_provider_models`-only entries. Fixed: both passes now run.
+- **`SyntaxError: missing ) after argument list`** in dashboard — CSS strings with `var(--accent)`
+  inside `onfocus="..."` HTML attributes broke the browser's HTML parser. Replaced all inline
+  CSS string assignments with dedicated `matrixInputFocus/Blur/CellFocus/CellBlur` functions.
+- **TypeScript cast in HTML** — `providers as Record<string,string>` in `<script>` block.
+  Browsers cannot parse TypeScript. Removed cast.
+- **Reasoning effort auto-detect** — was scanning only resolved model values (zen gateway names
+  like `minimax-m3-free`). Now scans both model aliases AND resolved values; `-thinking` suffix
+  pattern matches `claude-sonnet-4-6-thinking` and `claude-opus-4-6-thinking`.
+- **Debug full-body log removed** — `_LOGGED_FULL_BODY` env hack logged entire request body
+  (potential PII/secret exposure) on first request. Removed.
+- **Logger level was static** — `currentLevel` captured as `const` at module load; `config.reload()`
+  never updated it. Fixed: now reads `config.logLevel` dynamically via `getCurrentLevel()`.
+- **Failover webhook used global `fetch`** — changed to `poolFetch` for connection pooling.
+- **`AGENT_CONTEXT_PATH` resolution** — `__dirname` is `src/` under `tsx` but `dist/` when
+  compiled. Fixed in both `index.ts` and `antigravity-context.ts`.
+- **Port binding errors** — `EACCES` and `EADDRINUSE` now log clear platform-specific
+  instructions instead of a generic error.
+
+### Removed
+- `models.nvidia.json`, `models.openrouter.json` — not referenced anywhere in code.
+- `test/ui-provider-column.test.ts` — tested CSS classes that no longer exist after matrix rewrite.
+- `getOnlineLocalProviders()`, `mapExternalMessagesToCore()`, `constructToolCallText()` — dead exports.
+- `@grpc/grpc-js`, `@grpc/proto-loader` — dead npm dependencies (no gRPC imports in source).
+- `docs/CONFIGURATION.md`: removed false `models.{provider}.json` cache reference and
+  `ANTIGRAVITY_CONTEXT` env var that was never implemented.
 
 ---
 
 ## [6b62066] — 2026-06-05
 
 ### Added
-- **Provider model cache** (`provider-cache.ts`) — 10-min TTL in-memory cache per provider. Auto-warms at startup. API: `GET /api/provider-models` (cached), `POST` (fetch/force-refresh), `DELETE /api/provider-models/cache` (clear), `/api/provider-models/warm`.
-- **Browse Models Refresh button** — force-clears server cache then re-fetches, bypassing the 10-min TTL.
-- **Models tab lazy-fetch** — resolver dropdowns in the old flat table try `/api/provider-models` when no cached models exist for the selected provider.
-- **Provider logo in model dropdowns** — `createResolverSelect` accepts a `providerMeta` arg; logo shown in both trigger and list items.
-- **Cost tab date filter** — date picker, "Today" and "All time" buttons. `GET /api/cost?date=YYYY-MM-DD` returns single-day scope; `?all=1` returns all-time. Stat card subtitles update to reflect scope.
-- **`restoreCostCanvases()` / `showCostEmpty()`** — fix for `parentElement of null` crash when switching cost date after a "no data" state replaced a `<canvas>`.
-- **History date pills in own row** — `#historyDateList` moved below filter bar into `margin:8px 0 12px` row.
-- **Sessions tab DB-backed list** — `refreshSessionListCache()` with 30-second TTL replaces `fs.statSync` scan. Eliminates 50 MB log reads on sessions load.
-- **Log rotation** — size-based `.log → .1.log` rotation. `LOG_MAX_FILES` / `LOG_MAX_AGE_DAYS` retention. `getLogStats()` exposed via `/api/logs/stats`.
-- **Workspace context hardening** (`workspace-context.ts`) — strict envelope framing `agent-context.md` as documentation, not runtime state. Path anonymization via SHA-256 token. Tool-result wrapper. Configurable via `WORKSPACE_CONTEXT_ENVELOPE` (`off` | `loose` | `strict`).
-- **`validateApiKey`** — reports the actual missing env-var names from `DEFAULT_PROVIDER_CONFIGS` instead of a generic message.
-- **`docs/antigravity-v2-analysis.md`** — full reverse-engineering of Antigravity 2.0's network protocol.
+- **Provider model cache** (`provider-cache.ts`) — 10-min TTL in-memory cache per provider.
+  Auto-warms at startup. Endpoints: `GET /api/provider-models` (cached), `POST` (fetch),
+  `DELETE /api/provider-models/cache`, `POST /api/provider-models/warm`.
+- **Browse Models: Refresh button** — force-clears server cache then re-fetches.
+- **Cost tab date filter** — date picker + "Today"/"All time" buttons.
+  `GET /api/cost?date=YYYY-MM-DD` for single-day; `?all=1` for all-time.
+- **History date pills** moved to their own row below the filter bar.
+- **Sessions tab DB-backed list** — `refreshSessionListCache()` with 30s TTL replaces
+  raw `fs.statSync` scan. Eliminates 50 MB log reads on sessions load.
+- **Log rotation** — size-based `.log → .1.log` rotation. `LOG_MAX_FILES` / `LOG_MAX_AGE_DAYS`
+  retention. `getLogStats()` via `/api/logs/stats`.
+- **Workspace context hardening** (`workspace-context.ts`) — strict envelope, path anonymization
+  via SHA-256 token, tool-result wrapper. Configurable via `WORKSPACE_CONTEXT_ENVELOPE`.
+- **`validateApiKey`** reports actual missing env-var names instead of generic message.
+- **`docs/antigravity-v2-analysis.md`** — full reverse-engineering of Antigravity 2.0 network
+  protocol (endpoints, request format, context overhead, tool calling, auth).
 
 ### Fixed
-- Cost charts: `parentElement of null` on date switch when canvas was replaced by "no data" div.
-- Router: cap per-provider retries to 2 when multiple candidates exist; add second-pass global fallback to stop 11×50s backoff on a broken provider.
-- Image/vision: drop `fileData` URIs that aren't `http(s)/data/file` — fixes NVIDIA stepfun 400 "URL must be HTTP, data or file URL".
-- Mapper + OpenAI adapter: filter Google-style `files/abc123` refs before sending to non-Google providers.
+- Cost charts: `parentElement of null` crash when switching dates after a "no data" state.
+- Router: cap per-provider retries to 2 when multiple candidates exist; add second-pass
+  global fallback to stop 11×50s backoff on a broken provider.
+- Image/vision: drop `fileData` URIs that aren't `http(s)/data/file` (fixes NVIDIA stepfun 400).
+- `files/abc123` Google-style URIs filtered in mapper + OpenAI adapter.
 
 ### Removed
 - Dead gRPC code: `proxy/src/server.ts`, `proxy/src/handlers.ts`, entire `proxy/proto/` tree.
-- 8 corrupted `.env` lines (keys not parsed by `config.ts`).
 
 ---
 
-## [693a5bf] — earlier
+## [14e04eb] — earlier
 
-### Fixed
-- Dashboard UI: keyboard shortcut focus, sidebar alignment, detail panel overflow.
+### Added
+- Auto-install self-signed TLS cert to Windows Trusted Root store in `start.ps1` so
+  Antigravity Desktop can verify the proxy TLS connection without a manual cert trust step.
+
+---
+
+## [015f54a] — earlier
+
+### Added
+- Multi-provider failover (`PROVIDER_PRIORITY` env var).
+- Adapters: Anthropic (Messages API), Google Gemini, OpenAI-compatible (NVIDIA, OpenRouter, Groq).
+- Dashboard auth — login page, session cookies, `/api/auth/configure`, `/api/auth/disable`.
+- Failover webhook — `FAILOVER_WEBHOOK_URL`, `/api/webhook/configure`, `/api/webhook-test`.
+- SQLite persistence (`db.ts`) — requests, cost, sessions, logs survive restarts.
+- SSE real-time events — request feed, log stream, cleared events.
 
 ---
 
 ## [1e37e5c] — earlier
 
 ### Added
-- Keyboard shortcuts: `/` focus search, `?` help overlay, number keys for tab navigation.
+- Keyboard shortcuts: `/` focus search, `?` help overlay.
 - Collapsible sidebar (56px icon-only mode, persisted to `localStorage`).
-- Full-text search across requests, sessions, and logs via `/api/search`.
-- Per-table paginated search via `/api/requests/search`.
-- Request replay — `/api/replay` POST re-runs a stored request through the engine.
-- Session compare — select two sessions for side-by-side diff view.
-- Provider failover timeline visualization in request detail expand.
+- Full-text search via `/api/search` across requests, sessions, logs.
+- Request replay — `/api/replay` re-runs a stored request.
+- Session compare — side-by-side diff view for two sessions.
+- Provider failover timeline visualization in request detail.
 
 ---
 
@@ -76,34 +184,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - Local model discovery — auto-detect Ollama / vLLM / LM Studio on startup.
 - `/api/local/discover` (POST = scan, GET = cached), `/api/local/apply`.
-- Local providers merged into provider list and dashboard Config tab.
 
 ---
 
 ## [9bac192] — earlier
 
 ### Added
-- Cost visualization — Chart.js charts: cost by provider (doughnut), by model (horizontal bar), by day (line).
-- `getCostAggregation`, `getCostByDay`, `getStats` in `db.ts`.
-- Pricing editor in Cost tab — per-provider default and per-model overrides, saved to `pricing.json`.
+- Cost visualization — Chart.js: cost by provider (doughnut), by model (bar), by day (line).
+- Pricing editor in Cost tab, saved to `pricing.json`.
 
 ---
 
 ## [ec401fc] — earlier
 
 ### Added
-- Rate limiting — global + per-provider max requests per window. `/api/rate-limit` GET/POST/reset.
+- Rate limiting — global + per-provider. `/api/rate-limit` GET/POST/reset.
 - Blocklist — provider IDs, model glob patterns, content regex. `/api/blocklist` GET/POST.
-- Blocklist checked in streaming loop; rate limit 0 treated as unlimited.
 
 ---
 
-## [015f54a] — earlier
+## [c2897fc] — initial release
 
 ### Added
-- Multi-provider failover with `PROVIDER_PRIORITY` env var.
-- Provider adapters: Anthropic (Messages API), Google Gemini, OpenAI-compat.
-- Dashboard auth — login page, session cookie, `/api/auth/configure`, `/api/auth/disable`.
-- Failover webhook — `FAILOVER_WEBHOOK_URL`, `/api/webhook/configure`, `/api/webhook-test`.
-- SQLite persistence via `db.ts` — requests, cost, sessions, logs survive restarts.
-- SSE real-time events — request feed, log stream, cleared events.
+- Proxy core: intercepts Antigravity's Gemini API calls on port 443, translates to
+  OpenAI-compatible format, streams response back.
+- NVIDIA NIM and OpenRouter provider support.
+- Self-signed TLS with `node-forge`.
+- Context stripping: removes `<skills>/<plugins>/<user_rules>/<identity>` (~3,500 tokens/request),
+  injects compact `agent-context.md` reference.
+- Tool argument sanitization: strips Antigravity internal fields (`toolAction`, `toolSummary`,
+  `Summary`, `Action`) before forwarding to external models.
+- Basic dashboard on port 4000.
