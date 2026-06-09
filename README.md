@@ -6,6 +6,15 @@
 
 <p align="center">Use <strong>any AI provider</strong> with <strong>Antigravity 2.0</strong> — NVIDIA, OpenRouter, OpenAI, Groq, Anthropic, Google Gemini, OpenCode Zen, or local models (Ollama, vLLM, LM Studio).</p>
 
+<p align="center">
+  <a href="https://github.com/12errh/antigravity-proxy/actions/workflows/ci.yml">
+    <img src="https://github.com/12errh/antigravity-proxy/actions/workflows/ci.yml/badge.svg" alt="CI">
+  </a>
+  <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node >=18">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" alt="Platform">
+</p>
+
 The proxy intercepts Antigravity's Google Gemini API calls and translates them to the target provider's format. Supports multi-provider failover with retry + exponential backoff, per-model per-provider routing via a matrix UI, reasoning effort control, and real-time hot-reload of all config.
 
 ---
