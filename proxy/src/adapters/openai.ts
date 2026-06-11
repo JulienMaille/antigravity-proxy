@@ -3,6 +3,34 @@ import type { StreamChunk, ModelAdapter } from './types.js';
 import { poolFetch } from '../http-pool.js';
 import { getEffortForModel } from '../reasoning-effort.js';
 
+/**
+ * Known field names that providers use to emit reasoning/thinking content.
+ * Checked at both the choice-level and delta-level in streaming responses,
+ * and at the message-level in non-streaming responses.
+ */
+const REASONING_FIELD_NAMES = new Set([
+  'reasoning_content',
+  'reasoning',
+  'reasoning_text',
+  'thinking',
+  'thinking_content',
+  'reasoning_content_blocks',
+  'reasoning_details',
+]);
+
+/**
+ * Extract reasoning content from an object by checking all known field names.
+ * Returns the first non-empty string found, or null.
+ */
+function extractReasoning(obj: Record<string, unknown> | null | undefined): string | null {
+  if (!obj) return null;
+  for (const field of REASONING_FIELD_NAMES) {
+    const val = obj[field];
+    if (typeof val === 'string' && val.length > 0) return val;
+  }
+  return null;
+}
+
 
 export class OpenAICompatAdapter implements ModelAdapter {
   provider: string;
@@ -30,23 +58,18 @@ export class OpenAICompatAdapter implements ModelAdapter {
     if (!this.isStreaming(response)) {
       const data = await response.json() as any;
       const choice = data.choices?.[0];
-      if (choice?.message?.reasoning_content) {
-        yield { type: 'thought', content: choice.message.reasoning_content };
-      }
-      const isMiniMax = model.toLowerCase().includes('minimax');
-      if (isMiniMax && (choice?.message as any)?.reasoning_details) {
-        yield { type: 'thought', content: (choice?.message as any).reasoning_details };
+      // Universal reasoning extraction: check all known field names
+      const reason = choice?.message ? extractReasoning(choice.message) : null;
+      if (reason) {
+        yield { type: 'thought', content: reason };
       }
       if (choice?.message?.content) {
         const text = choice.message.content;
-        if (isMiniMax && text.includes('<think>') && text.includes('</think>')) {
-          const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>([\s\S]*)/);
-          if (thinkMatch) {
-            if (thinkMatch[1].trim()) yield { type: 'thought', content: thinkMatch[1] };
-            if (thinkMatch[2].trim()) yield { type: 'text', content: thinkMatch[2] };
-          } else {
-            yield { type: 'text', content: text };
-          }
+        // Universal <think> tag parsing for any model
+        const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>([\s\S]*)/);
+        if (thinkMatch) {
+          if (thinkMatch[1].trim()) yield { type: 'thought', content: thinkMatch[1] };
+          if (thinkMatch[2].trim()) yield { type: 'text', content: thinkMatch[2] };
         } else {
           yield { type: 'text', content: text };
         }
@@ -60,7 +83,6 @@ export class OpenAICompatAdapter implements ModelAdapter {
       return;
     }
 
-    const isMiniMax = model.toLowerCase().includes('minimax');
     const reader = response.body!.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -69,37 +91,36 @@ export class OpenAICompatAdapter implements ModelAdapter {
     let inThinkTag = false;
 
     function* processContent(text: string): Generator<StreamChunk> {
-      if (isMiniMax) {
-        if (inThinkTag) {
-          const endIdx = text.indexOf('</think>');
-          if (endIdx >= 0) {
-            thinkBuffer += text.slice(0, endIdx);
-            yield { type: 'thought', content: thinkBuffer };
-            thinkBuffer = '';
-            inThinkTag = false;
-            const after = text.slice(endIdx + 8);
-            if (after) yield* processContent(after);
-          } else {
-            thinkBuffer += text;
-          }
-          return;
+      // Universal <think> tag parsing for any model
+      if (inThinkTag) {
+        const endIdx = text.indexOf('</think>');
+        if (endIdx >= 0) {
+          thinkBuffer += text.slice(0, endIdx);
+          yield { type: 'thought', content: thinkBuffer };
+          thinkBuffer = '';
+          inThinkTag = false;
+          const after = text.slice(endIdx + 8);
+          if (after) yield* processContent(after);
+        } else {
+          thinkBuffer += text;
         }
-        const startIdx = text.indexOf('<think>');
-        if (startIdx >= 0) {
-          if (startIdx > 0) yield { type: 'text', content: text.slice(0, startIdx) };
-          inThinkTag = true;
-          const rest = text.slice(startIdx + 7);
-          const endIdx = rest.indexOf('</think>');
-          if (endIdx >= 0) {
-            yield { type: 'thought', content: rest.slice(0, endIdx) };
-            inThinkTag = false;
-            const after = rest.slice(endIdx + 8);
-            if (after) yield* processContent(after);
-          } else {
-            thinkBuffer = rest;
-          }
-          return;
+        return;
+      }
+      const startIdx = text.indexOf('<think>');
+      if (startIdx >= 0) {
+        if (startIdx > 0) yield { type: 'text', content: text.slice(0, startIdx) };
+        inThinkTag = true;
+        const rest = text.slice(startIdx + 7);
+        const endIdx = rest.indexOf('</think>');
+        if (endIdx >= 0) {
+          yield { type: 'thought', content: rest.slice(0, endIdx) };
+          inThinkTag = false;
+          const after = rest.slice(endIdx + 8);
+          if (after) yield* processContent(after);
+        } else {
+          thinkBuffer = rest;
         }
+        return;
       }
       yield { type: 'text', content: text };
     }
@@ -121,11 +142,17 @@ export class OpenAICompatAdapter implements ModelAdapter {
           const choice = chunk.choices?.[0];
           if (!choice) continue;
           const delta = choice.delta || {};
-          if (delta.reasoning_content) {
-            yield { type: 'thought', content: delta.reasoning_content };
+          // Universal reasoning extraction: check delta-level fields first
+          const deltaReason = extractReasoning(delta);
+          if (deltaReason) {
+            yield { type: 'thought', content: deltaReason };
           }
-          if (isMiniMax && (delta as any).reasoning_details) {
-            yield { type: 'thought', content: (delta as any).reasoning_details };
+          // Some providers put reasoning at the choice level (not inside delta)
+          if (!deltaReason) {
+            const choiceReason = extractReasoning(choice);
+            if (choiceReason) {
+              yield { type: 'thought', content: choiceReason };
+            }
           }
           if (delta.content) {
             yield* processContent(delta.content);
@@ -149,7 +176,7 @@ export class OpenAICompatAdapter implements ModelAdapter {
         }
       }
       // Flush any remaining think buffer on stream end
-      if (isMiniMax && thinkBuffer) {
+      if (thinkBuffer) {
         yield { type: 'thought', content: thinkBuffer };
         thinkBuffer = '';
       }
