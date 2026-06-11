@@ -230,80 +230,69 @@ All keys are hot-reloaded from `.env` — no restart needed.
 ## 🏗️ Architecture
 
 ```mermaid
-graph TB
-    subgraph "antigravity/"
-        A[agent-context.md]
-        B[start.ps1]
-        C[README.md]
-        D[CHANGELOG.md]
-        E[docs/
-            F[SETUP.md]
-            G[CONFIGURATION.md]
-            H[DEVELOPER.md]
-            I[antigravity-v2-analysis.md]
-        ]
-        J[proxy/
-            K[src/
-                L[adapters/
-                    M[openai.ts]
-                    N[anthropic.ts]
-                    O[google.ts]
-                    P[groq.ts]
-                    Q[zen.ts]
-                    R[nvidia.ts]
-                    S[types.ts]
-                ]
-                T[adapter.ts]
-                U[provider-plugin.ts]
-                V[provider-registry.ts]
-                W[plugins/
-                    X[builtin-plugins.ts]
-                ]
-                Y[tool-capabilities.ts]
-                Z[tool-normalizer.ts]
-                AA[model-capabilities.ts]
-                AB[router.ts]
-                AC[models.ts]
-                AD[index.ts]
-                AE[engine.ts]
-                AF[mapper.ts]
-                AG[config.ts]
-                AH[provider-cache.ts]
-                AI[reasoning-effort.ts]
-                AJ[antigravity-context.ts]
-                AK[workspace-context.ts]
-                AL[auth.ts]
-                AM[auth-sessions.ts]
-                AN[logger.ts]
-                AO[dashboard.ts]
-                AP[db.ts]
-                AQ[request-store.ts]
-                AR[rate-limiter.ts]
-                AS[blocklist.ts]
-                AT[local-discovery.ts]
-                AU[http-pool.ts]
-                AV[pricing.ts]
-                AW[types.ts]
-            ]
-            AX[dashboard/
-                AY[index.html]
-                AZ[login.html]
-            ]
-            BA[models.json]
-            BB[pricing.json]
-            BC[reasoning-effort.json]
-            BD[blocklist.json]
-            BE[.env]
-            BF[.env.example]
-            BG[certs/
-                BH[cert.pem]
-                BI[key.pem]
-            ]
-            BJ[logs/
-                BK[rotating logs]
-            ]
-        ]
-    ]
+graph TD
+    %% Root level
+    A[agent-context.md] --> B[start.ps1]
+    B --> C[README.md]
+    C --> D[CHANGELOG.md]
+    C --> E[docs/]
+    C --> F[proxy/]
+    
+    %% docs/ directory
+    E --> G[SETUP.md]
+    E --> H[CONFIGURATION.md]
+    E --> I[DEVELOPER.md]
+    E --> J[antigravity-v2-analysis.md]
+    
+    %% proxy/ directory
+    F --> K[src/]
+    
+    %% src/ directory - main components
+    K --> L[adapters/]
+    K --> M[adapter.ts]
+    K --> N[provider-plugin.ts]
+    K --> O[provider-registry.ts]
+    K --> P[plugins/]
+    K --> Q[tool-capabilities.ts]
+    K --> R[tool-normalizer.ts]
+    K --> S[model-capabilities.ts]
+    K --> T[router.ts]
+    K --> U[models.ts]
+    K --> V[index.ts]
+    K --> W[engine.ts]
+    K --> X[mapper.ts]
+    K --> Y[config.ts]
+    K --> Z[provider-cache.ts]
+    
+    %% adapters subdirectory
+    L --> A1[openai.ts]
+    L --> A2[anthropic.ts]
+    L --> A3[google.ts]
+    L --> A4[groq.ts]
+    L --> A5[zen.ts]
+    L --> A6[nvidia.ts]
+    L --> A7[types.ts]
+    
+    %% plugins subdirectory
+    P --> B1[builtin-plugins.ts]
+    
+    %% dashboard subdirectory
+    F --> C1[dashboard/]
+    C1 --> C2[index.html]
+    C1 --> C3[login.html]
+    
+    %% Other files in proxy/
+    F --> D1[models.json]
+    F --> D2[pricing.json]
+    F --> D3[reasoning-effort.json]
+    F --> D4[blocklist.json]
+    F --> D5[.env]
+    F --> D6[.env.example]
+    F --> D7[certs/]
+    F --> D8[logs/]
+    
+    %% Note: actual configuration for certs and logs are nested
+```
 ```
 
 ---
