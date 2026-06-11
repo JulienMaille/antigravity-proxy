@@ -4,6 +4,8 @@ import { Router } from './router.js';
 import { modelResolver } from './models.js';
 import { ANTIGRAVITY_CONTEXT } from './antigravity-context.js';
 import { registerBuiltinPlugins } from './plugins/builtin-plugins.js';
+import { toolCapabilityRegistry } from './tool-capabilities.js';
+import { normalizeToolCall } from './tool-normalizer.js';
 import type { MappedRequest } from './mapper.js';
 import type { OpenAIMessage } from './mapper.js';
 
@@ -79,31 +81,29 @@ export function reloadRouter(): void {
   logger.info('[engine] Router, config, and model maps reloaded');
 }
 
-const ANTIGRAVITY_INTERNAL_PARAMS = new Set([
-  'toolAction', 'toolSummary', 'Summary', 'ToolAction', 'ToolSummary',
-]);
-
 /**
- * Parameters that Antigravity injects into tool calls for its own routing.
- * These are stripped before forwarding to the actual tool executor.
- *
- * WARNING: 'Action' is NOT included here because it is a legitimate parameter
- * of the `manage_task` tool (Action: "list" | "kill" | "kill_all" | "status" | "send_input").
- * Stripping it would cause manage_task to always fail with "Action required".
- *
- * 'Summary' is also excluded because some models use it as a legitimate param.
- * Only strip known-internal params that have no meaning to any tool.
+ * Normalize a tool call from an external LLM.
+ * Uses the ToolNormalizer to fix names, params, types, and defaults.
+ * Falls back to simple internal-param stripping if normalizer doesn't apply.
  */
 const ANTIGRAVITY_INTERNAL_ONLY = new Set([
   'toolAction', 'toolSummary', 'ToolAction', 'ToolSummary',
 ]);
 
-function stripUnknownArgs(args: Record<string, unknown>, _toolName: string, _tools: Record<string, any> | undefined): Record<string, unknown> {
+function normalizeToolArgs(args: Record<string, unknown>, toolName: string): Record<string, unknown> {
+  // First: strip Antigravity internal params (these are injected by the runtime)
   const cleaned: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(args)) {
     if (!ANTIGRAVITY_INTERNAL_ONLY.has(key)) cleaned[key] = value;
   }
-  return Object.keys(cleaned).length > 0 ? cleaned : args;
+  if (Object.keys(cleaned).length === 0) return args;
+
+  // Second: run through the tool normalizer for schema-aware fixes
+  const result = normalizeToolCall(toolName, cleaned);
+  if (result.warnings) {
+    logger.info(`[normalizer] ${result.warnings.join('; ')}`);
+  }
+  return result.args;
 }
 
 export type StreamResponseChunk =
@@ -128,6 +128,9 @@ export async function* streamResponse(
   });
 
   try {
+    // Sync per-request tools into the capability registry for normalization
+    toolCapabilityRegistry.setDynamicTools(mapped.tools);
+
     // Phase 2: Inject Antigravity runtime identity as a system message so
     // external models receive the tool-discipline rules, decision tree,
     // spawning guidelines, and verification requirements directly — without
@@ -166,7 +169,8 @@ export async function* streamResponse(
       } else if (chunk.type === 'thought') {
         yield { type: 'thought', content: chunk.content || '', provider: prov, resolvedModel: rmodel };
       } else if (chunk.type === 'tool-call') {
-        yield { type: 'tool-call', name: chunk.name || 'unknown', args: stripUnknownArgs(chunk.args || {}, chunk.name || 'unknown', mapped.tools), provider: prov, resolvedModel: rmodel };
+        const toolName = chunk.name || 'unknown';
+        yield { type: 'tool-call', name: toolName, args: normalizeToolArgs(chunk.args || {}, toolName), provider: prov, resolvedModel: rmodel };
       } else if (chunk.type === 'attempt') {
         // A4: surface router's attempt events to the dashboard so failover
         // telemetry is visible. The downstream consumer in index.ts already
