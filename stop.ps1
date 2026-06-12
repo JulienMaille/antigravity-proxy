@@ -53,23 +53,37 @@ if ($proxyPids.Count -gt 0) {
 # Wait for port to free
 Start-Sleep -Seconds 1
 
-# -- 2. Remove hosts entries --------------------------------------------------
+# -- 2. Comment out hosts entries (preserve original lines) --------------------
 Write-Step "Cleaning hosts file"
 $hostsPath = "$env:SystemRoot\System32\drivers\etc\hosts"
 $domains = @('cloudcode-pa.googleapis.com', 'daily-cloudcode-pa.googleapis.com')
 
 if (Test-Path $hostsPath) {
-  $hostsContent = Get-Content -Path $hostsPath -Raw
-  if ([string]::IsNullOrEmpty($hostsContent)) {
+  $hostsContent = Get-Content -Path $hostsPath
+  if ($null -eq $hostsContent -or $hostsContent.Count -eq 0) {
     Write-Ok "No proxy hosts entries found"
   } else {
-    $originalContent = $hostsContent
-    foreach ($domain in $domains) {
-      $hostsContent = ($hostsContent -split "`r?`n" | Where-Object { $_ -notmatch [regex]::Escape($domain) }) -join "`r`n"
+    $changed = $false
+    $newLines = foreach ($line in $hostsContent) {
+      $matched = $false
+      foreach ($domain in $domains) {
+        if ($line -match [regex]::Escape($domain)) {
+          # If the line isn't already commented, comment it out
+          if ($line -notmatch '^\s*#') {
+            "# $line"
+            $changed = $true
+          } else {
+            $line  # already commented, leave as-is
+          }
+          $matched = $true
+          break
+        }
+      }
+      if (-not $matched) { $line }
     }
-    if ($hostsContent -ne $originalContent) {
-      Set-Content -Path $hostsPath -Value $hostsContent -Force
-      Write-Ok "Removed hosts entries for Google APIs"
+    if ($changed) {
+      Set-Content -Path $hostsPath -Value $newLines -Force
+      Write-Ok "Commented out hosts entries for Google APIs (original lines preserved)"
     } else {
       Write-Ok "No proxy hosts entries found"
     }

@@ -20,15 +20,25 @@ let cursor = 0;
 let blacklist = new Set<string>();
 let current: { url: string; addr: string; proto: 'http' | 'socks5' } | null = null;
 let lastRefresh = 0;
-let loading = false;
+/** Resolves when the current load finishes, or null if no load is in progress. */
+let pendingLoad: Promise<void> | null = null;
 
 export function isProxyPoolEnabled(): boolean {
   return process.env.OPENCODE_USE_PROXY_POOL !== 'false';
 }
 
 export async function loadPool(): Promise<void> {
-  if (loading) return;
-  loading = true;
+  // If a load is already in progress, wait for it instead of returning early
+  if (pendingLoad) return pendingLoad;
+  pendingLoad = _loadPool();
+  try {
+    await pendingLoad;
+  } finally {
+    pendingLoad = null;
+  }
+}
+
+async function _loadPool(): Promise<void> {
   try {
     const res = await undiciFetch(PROXY_API);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -43,8 +53,6 @@ export async function loadPool(): Promise<void> {
     logger.info(`[proxy-pool] Loaded ${pool.length} S-grade proxies`);
   } catch (e: any) {
     logger.warn(`[proxy-pool] Failed to load pool: ${e.message}`);
-  } finally {
-    loading = false;
   }
 }
 
