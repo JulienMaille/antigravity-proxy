@@ -20,6 +20,7 @@ import { checkBlocked } from './blocklist.js';
 import { scanLocalProviders } from './local-discovery.js';
 import { installAgentContext } from './install-context.js';
 import { getWorkspaceContextEnvelope, wrapToolResultForContextFile, isWorkspaceContextFile } from './workspace-context.js';
+import { handleResponses } from './responses-handler.js';
 import type { Content, Tool, GenerationConfig } from './types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -117,6 +118,32 @@ function port4000Handler(req: http.IncomingMessage, res: http.ServerResponse): v
         logger.error('Error handling OpenAI chat completions', { error: err.message });
       });
     });
+    return;
+  }
+  if (pathname === '/v1/responses') {
+    let bodyChunks: Buffer[] = [];
+    req.on('data', chunk => bodyChunks.push(chunk));
+    req.on('end', () => {
+      const body = Buffer.concat(bodyChunks);
+      handleResponses(req, res, body).catch(err => {
+        logger.error('Error handling Responses API', { error: err.message });
+      });
+    });
+    return;
+  }
+  if (pathname === '/v1/models') {
+    // Return list of available models (Codex Desktop calls this to populate model picker)
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      object: 'list',
+      data: [
+        { id: 'deepseek-v4-flash-free', object: 'model', created: 1700000000, owned_by: 'opencode' },
+        { id: 'deepseek-v4-flash', object: 'model', created: 1700000000, owned_by: 'opencode' },
+        { id: 'minimax-m3-free', object: 'model', created: 1700000000, owned_by: 'opencode' },
+        { id: 'nemotron-3-super-free', object: 'model', created: 1700000000, owned_by: 'opencode' },
+        { id: 'qwen3.6-plus-free', object: 'model', created: 1700000000, owned_by: 'opencode' },
+      ],
+    }));
     return;
   }
   const hostname = 'cloudcode-pa.googleapis.com';

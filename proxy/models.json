@@ -1,4 +1,9 @@
 {
+  "deepseek-v4-flash-free": "deepseek-v4-flash-free",
+  "big-pickle": "big-pickle",
+  "minimax-m3-free": "minimax-m3-free",
+  "nemotron-3-super-free": "nemotron-3-super-free",
+  "qwen3.6-plus-free": "qwen3.6-plus-free",
   "_provider_models": {
     "default": {
       "opencode": "deepseek-v4-flash-free"
@@ -55,19 +60,14 @@
       "opencode": "deepseek-v4-flash-free"
     },
     "gpt-oss-120b": {
+      "opencode": "nemotron-3-ultra-free",
       "openrouter": "stepfun/step-3.7-flash",
-      "nvidia": "stepfun-ai/step-3.7-flash",
-      "opencode": "nemotron-3-ultra-free"
+      "nvidia": "stepfun-ai/step-3.7-flash"
     },
     "gpt-oss-120b-medium": {
+      "opencode": "nemotron-3-ultra-free",
       "openrouter": "stepfun/step-3.7-flash",
-      "nvidia": "stepfun-ai/step-3.7-flash",
-      "opencode": "nemotron-3-ultra-free"
+      "nvidia": "stepfun-ai/step-3.7-flash"
     }
-  },
-  "deepseek-v4-flash-free": "deepseek-v4-flash-free",
-  "big-pickle": "big-pickle",
-  "minimax-m3-free": "minimax-m3-free",
-  "nemotron-3-super-free": "nemotron-3-super-free",
-  "qwen3.6-plus-free": "qwen3.6-plus-free"
+  }
 }
