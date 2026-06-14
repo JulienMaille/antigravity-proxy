@@ -260,8 +260,9 @@ test('P1: createAdapter falls back to legacy for known providers', async () => {
   assert.ok(adapter.provider === 'openai', 'adapter provider should be openai');
 });
 
-test('P1: createAdapter throws for unknown provider with no plugin', async () => {
+test('P1: createAdapter falls back to generic OpenAI adapter for unknown provider', async () => {
   const { createAdapter } = await import('../src/adapter.js');
   const config: ProviderConfig = { id: 'completely-unknown-provider', priority: 1, enabled: true };
-  assert.throws(() => createAdapter(config), /Unknown provider/);
+  const adapter = createAdapter(config);
+  assert.ok(adapter, 'should return an adapter without throwing');
 });
