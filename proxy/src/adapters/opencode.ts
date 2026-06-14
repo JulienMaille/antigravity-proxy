@@ -5,7 +5,7 @@ import { poolFetch } from '../http-pool.js';
 import { logger } from '../logger.js';
 import { fetchWithProxyFallback, startProxyPool, isProxyPoolEnabled, reportFailure } from '../proxy-pool.js';
 
-const OC_VERSION = '1.17.4';
+const OC_VERSION = '1.17.6';
 let cachedModels: string[] | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 5 * 60 * 1000;

@@ -4,62 +4,65 @@
       "opencode": "deepseek-v4-flash-free"
     },
     "claude-opus-4-6": {
-      "zen": "mimo-v2.5-free"
+      "opencode": "mimo-v2.5-free"
     },
     "claude-opus-4-6-thinking": {
-      "zen": "mimo-v2.5-free"
+      "opencode": "mimo-v2.5-free"
     },
     "claude-sonnet-4-6": {
-      "zen": "mimo-v2.5-free"
+      "opencode": "mimo-v2.5-free"
     },
     "claude-sonnet-4-6-thinking": {
-      "zen": "mimo-v2.5-free"
+      "opencode": "mimo-v2.5-free"
     },
     "gemini-2.5-flash": {
-      "zen": "deepseek-v4-flash-free"
+      "opencode": "deepseek-v4-flash-free"
     },
     "gemini-3-flash-agent": {
-      "zen": "deepseek-v4-flash-free"
+      "opencode": "deepseek-v4-flash-free"
     },
     "gemini-3.1-flash": {
-      "zen": "deepseek-v4-flash-free"
+      "opencode": "deepseek-v4-flash-free"
     },
     "gemini-3.1-flash-lite": {
-      "zen": "deepseek-v4-flash-free"
+      "opencode": "deepseek-v4-flash-free"
     },
     "gemini-3.1-pro": {
-      "zen": "deepseek-v4-flash-free"
+      "opencode": "deepseek-v4-flash-free"
     },
     "gemini-3.1-pro-high": {
-      "zen": "deepseek-v4-flash-free"
+      "opencode": "deepseek-v4-flash-free"
     },
     "gemini-3.1-pro-low": {
-      "zen": "deepseek-v4-flash-free"
+      "opencode": "deepseek-v4-flash-free"
     },
     "gemini-3.5-flash": {
-      "zen": "deepseek-v4-flash-free"
+      "opencode": "deepseek-v4-flash-free"
     },
     "gemini-3.5-flash-high": {
-      "zen": "deepseek-v4-flash-free"
+      "opencode": "deepseek-v4-flash-free"
     },
     "gemini-3.5-flash-low": {
-      "zen": "deepseek-v4-flash-free"
+      "opencode": "deepseek-v4-flash-free"
+    },
+    "gemini-3.5-flash-extra-low": {
+      "opencode": "deepseek-v4-flash-free"
     },
     "gemini-3.5-flash-medium": {
-      "zen": "deepseek-v4-flash-free"
+      "opencode": "deepseek-v4-flash-free"
     },
     "gemini-pro-agent": {
-      "zen": "deepseek-v4-flash-free"
+      "opencode": "deepseek-v4-flash-free"
     },
     "gpt-oss-120b": {
       "openrouter": "stepfun/step-3.7-flash",
-      "nvidia": "minimaxai/minimax-m3",
-      "zen": "nemotron-3-ultra-free"
+      "nvidia": "stepfun-ai/step-3.7-flash",
+      "opencode": "nemotron-3-ultra-free"
     },
     "gpt-oss-120b-medium": {
       "openrouter": "stepfun/step-3.7-flash",
-      "nvidia": "minimaxai/minimax-m3",
-      "zen": "nemotron-3-ultra-free"
+      "nvidia": "stepfun-ai/step-3.7-flash",
+      "opencode": "nemotron-3-ultra-free"
     }
   },
   "deepseek-v4-flash-free": "deepseek-v4-flash-free",
