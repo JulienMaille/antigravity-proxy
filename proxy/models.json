@@ -10,7 +10,51 @@
   "_fallback_model": "",
   "_default_provider": "",
   "_default_model": "stepfun-ai/step-3.7-flash",
+  "deepseek-v4-flash-free": "deepseek-v4-flash-free",
+  "big-pickle": "big-pickle",
+  "minimax-m3-free": "minimax-m3-free",
+  "nemotron-3-super-free": "nemotron-3-super-free",
+  "qwen3.6-plus-free": "qwen3.6-plus-free",
   "_provider_models": {
+    "deepseek-v4-flash-free": {
+      "opencode": "deepseek-v4-flash-free"
+    },
+    "deepseek-v4-flash": {
+      "opencode": "deepseek-v4-flash"
+    },
+    "minimax-m3-free": {
+      "opencode": "minimax-m3-free"
+    },
+    "nemotron-3-super-free": {
+      "opencode": "nemotron-3-super-free"
+    },
+    "qwen3.6-plus-free": {
+      "opencode": "qwen3.6-plus-free"
+    },
+    "claude-opus-4-6": {
+      "opencode": "mimo-v2.5-free"
+    },
+    "claude-opus-4-6-thinking": {
+      "opencode": "mimo-v2.5-free"
+    },
+    "claude-sonnet-4-6": {
+      "opencode": "mimo-v2.5-free"
+    },
+    "claude-sonnet-4-6-thinking": {
+      "opencode": "mimo-v2.5-free"
+    },
+    "gemini-2.5-flash": {
+      "opencode": "deepseek-v4-flash-free"
+    },
+    "gemini-3-flash-agent": {
+      "opencode": "deepseek-v4-flash-free"
+    },
+    "gemini-3.1-flash": {
+      "opencode": "deepseek-v4-flash-free"
+    },
+    "gemini-3.1-flash-lite": {
+      "opencode": "deepseek-v4-flash-free"
+    },
     "deepseek-v4-flash-free": {
       "opencode": "deepseek-v4-flash-free"
     },
@@ -89,19 +133,14 @@
       "opencode": "deepseek-v4-flash-free"
     },
     "gpt-oss-120b": {
+      "opencode": "nemotron-3-ultra-free",
       "openrouter": "stepfun/step-3.7-flash",
-      "nvidia": "stepfun-ai/step-3.7-flash",
-      "opencode": "nemotron-3-ultra-free"
+      "nvidia": "stepfun-ai/step-3.7-flash"
     },
     "gpt-oss-120b-medium": {
       "opencode": "nemotron-3-ultra-free",
       "openrouter": "stepfun/step-3.7-flash",
       "nvidia": "stepfun-ai/step-3.7-flash"
     }
-  },
-  "deepseek-v4-flash-free": "deepseek-v4-flash-free",
-  "big-pickle": "big-pickle",
-  "minimax-m3-free": "minimax-m3-free",
-  "nemotron-3-super-free": "nemotron-3-super-free",
-  "qwen3.6-plus-free": "qwen3.6-plus-free"
+  }
 }

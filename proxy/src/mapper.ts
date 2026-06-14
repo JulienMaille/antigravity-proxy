@@ -33,6 +33,7 @@ export interface MappedRequest {
   topK?: number;
   stopSequences?: string[];
   providerOptions?: { openai?: { reasoningEffort?: string } };
+  skipAgentContext?: boolean;
 }
 
 export interface MappedConfig {

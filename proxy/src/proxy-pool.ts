@@ -2,6 +2,13 @@ import { fetch as undiciFetch, ProxyAgent as UndiciProxyAgent } from 'undici';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import https from 'https';
 import { logger } from './logger.js';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const RATE_LIMIT_FILE = path.resolve(__dirname, '..', 'data', 'proxy-rate-limits.json');
 
 interface ProxyItem {
   address: string;
@@ -18,10 +25,50 @@ const MAX_RETRIES = 3;
 let pool: ProxyItem[] = [];
 let cursor = 0;
 let blacklist = new Set<string>();
+// IP -> Expiration timestamp (ms)
+let rateLimitStore: Record<string, number> = {};
 let current: { url: string; addr: string; proto: 'http' | 'socks5' } | null = null;
 let lastRefresh = 0;
 /** Resolves when the current load finishes, or null if no load is in progress. */
 let pendingLoad: Promise<void> | null = null;
+
+function loadRateLimits(): void {
+  try {
+    if (fs.existsSync(RATE_LIMIT_FILE)) {
+      const content = fs.readFileSync(RATE_LIMIT_FILE, 'utf8');
+      rateLimitStore = JSON.parse(content);
+      // Clean up already expired entries
+      const now = Date.now();
+      let changed = false;
+      for (const [ip, expiresAt] of Object.entries(rateLimitStore)) {
+        if (expiresAt < now) {
+          delete rateLimitStore[ip];
+          changed = true;
+        }
+      }
+      if (changed) {
+        saveRateLimits();
+      }
+    }
+  } catch (e: any) {
+    logger.warn(`[proxy-pool] Failed to load rate limits: ${e.message}`);
+  }
+}
+
+function saveRateLimits(): void {
+  try {
+    const dir = path.dirname(RATE_LIMIT_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(RATE_LIMIT_FILE, JSON.stringify(rateLimitStore, null, 2), 'utf8');
+  } catch (e: any) {
+    logger.warn(`[proxy-pool] Failed to save rate limits: ${e.message}`);
+  }
+}
+
+// Initial load of rate limits
+loadRateLimits();
 
 export function isProxyPoolEnabled(): boolean {
   return process.env.OPENCODE_USE_PROXY_POOL !== 'false';
@@ -57,19 +104,45 @@ async function _loadPool(): Promise<void> {
 }
 
 function selectProxy(): boolean {
-  if (current) return true;
+  if (current) {
+    // If the currently selected proxy is rate limited, clear it
+    const expiresAt = rateLimitStore[current.addr];
+    if (expiresAt && expiresAt > Date.now()) {
+      current = null;
+    } else {
+      return true;
+    }
+  }
+  const now = Date.now();
   for (let i = 0; i < pool.length; i++) {
     const j = cursor % pool.length;
     cursor = j + 1;
     const p = pool[j];
-    if (!blacklist.has(p.address)) {
-      const url = p.protocol === 'socks5'
-        ? `socks5h://${p.address}`
-        : `http://${p.address}`;
-      current = { url, addr: p.address, proto: p.protocol as 'http' | 'socks5' };
-      logger.info(`[proxy-pool] Selected proxy: ${p.address} (${p.protocol})`);
-      return true;
+    
+    // Check local session blacklist
+    if (blacklist.has(p.address)) {
+      continue;
     }
+
+    // Check 6-hour rate limit blacklist
+    const expiresAt = rateLimitStore[p.address];
+    if (expiresAt && expiresAt > now) {
+      logger.debug(`[proxy-pool] Skipping proxy ${p.address} (rate limited for another ${Math.ceil((expiresAt - now) / 60000)} mins)`);
+      continue;
+    }
+
+    // Clean up expired entry if it exists
+    if (expiresAt) {
+      delete rateLimitStore[p.address];
+      saveRateLimits();
+    }
+
+    const url = p.protocol === 'socks5'
+      ? `socks5h://${p.address}`
+      : `http://${p.address}`;
+    current = { url, addr: p.address, proto: p.protocol as 'http' | 'socks5' };
+    logger.debug(`[proxy-pool] Selected proxy: ${p.address} (${p.protocol})`);
+    return true;
   }
   return false;
 }
@@ -111,17 +184,32 @@ export async function fetchWithProxyFallback(
       response = await httpProxyFetch(url, options, proxyUrl);
     }
 
-    if (response.status === 429 || response.status >= 500) {
-      const body = await response.text().catch(() => '');
-      throw new Error(`Proxy ${addr} returned ${response.status}: ${body.substring(0, 200)}`);
+    const is429 = response.status === 429;
+    let isRateLimitBody = false;
+    let body = '';
+    if (is429 || response.status >= 500) {
+      body = await response.text().catch(() => '');
+      isRateLimitBody = /rate.*limit/i.test(body) || /FreeUsageLimitError/i.test(body);
+      const err = new Error(`Proxy ${addr} returned ${response.status}: ${body.substring(0, 200)}`);
+      (err as any).isRateLimit = is429 || isRateLimitBody;
+      throw err;
     }
     return response;
   } catch (e: any) {
     logger.warn(`[proxy-pool] Proxy ${addr} failed: ${e.message}`);
+
+    const isRateLimit = e.isRateLimit || /rate.*limit/i.test(e.message) || /FreeUsageLimitError/i.test(e.message);
+    if (isRateLimit) {
+      const expiresAt = Date.now() + 6 * 60 * 60 * 1000; // 6 hours
+      rateLimitStore[addr] = expiresAt;
+      saveRateLimits();
+      logger.warn(`[proxy-pool] Proxy ${addr} rate limited, blacklisted 6h`);
+    }
+
     drop(addr);
     current = null;
     if (retries < MAX_RETRIES) {
-      logger.info(`[proxy-pool] Retrying with new proxy (attempt ${retries + 2}/${MAX_RETRIES + 1})`);
+      logger.debug(`[proxy-pool] Retrying with new proxy (attempt ${retries + 2}/${MAX_RETRIES + 1})`);
       return fetchWithProxyFallback(url, options, retries + 1);
     }
     logger.error(`[proxy-pool] All proxy retries exhausted`);
