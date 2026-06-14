@@ -141,15 +141,31 @@ export async function* streamResponse(
       mapped.system = existing ? `${ctx}\n\n${existing}` : ctx;
     }
 
+    // CRITICAL FIX: Inject mapped.system as a real system-role message so it
+    // reaches the model. Prior to this fix, mapped.system was set but never
+    // included in the messages array sent to the router/adapter — the model
+    // never saw its working directory, tool rules, or antigravity context.
+    if (mapped.system) {
+      // Only prepend if there isn't already a system message (avoid duplicates)
+      if (!mapped.messages.some(msg => msg.role === 'system')) {
+        mapped.messages.unshift({
+          role: 'system' as const,
+          content: mapped.system,
+        });
+      }
+    }
+
     // Also inject a prompt telling the model to read agent-context.md for
     // the full operating manual. This complements the system message with
     // the complete file content when the model chooses to read it.
+    // Include the explicit file path so the model knows where to find it.
     if (!mapped.messages.some(msg => msg.role === 'user' && typeof msg.content === 'string' &&
       msg.content.includes('Read the agent-context.md file using the view_file tool')
     )) {
+      const contextPath = process.env.AGENT_CONTEXT_PATH || 'agent-context.md';
       mapped.messages.unshift({
         role: 'user' as const,
-        content: 'Read the agent-context.md file using the view_file tool to adopt the runtime identity. Use this tool to access the complete operating manual for external agents before proceeding with your task. This includes the critical tool selection rules, subagent doctrine, verification requirements, and confidence framework needed to use Antigravity correctly. You must read this file to understand when and how to use all available tools, including manage_task for background process management and when to spawn agents for parallel execution.'
+        content: `Read the agent-context.md file using the view_file tool to adopt the runtime identity. Use this tool to access the complete operating manual for external agents before proceeding with your task. The file is located at: ${contextPath}. This includes the critical tool selection rules, subagent doctrine, verification requirements, and confidence framework needed to use Antigravity correctly. You must read this file to understand when and how to use all available tools, including manage_task for background process management and when to spawn agents for parallel execution.`
       });
     }
 
@@ -212,15 +228,26 @@ export async function generateResponse(
       mapped.system = existing ? `${ctx}\n\n${existing}` : ctx;
     }
 
+    // CRITICAL FIX: Inject mapped.system as a real system-role message so it
+    // reaches the model (same fix as streamResponse above).
+    if (mapped.system) {
+      if (!mapped.messages.some(msg => msg.role === 'system')) {
+        mapped.messages.unshift({
+          role: 'system' as const,
+          content: mapped.system,
+        });
+      }
+    }
+
     // Also inject a prompt telling the model to read agent-context.md for
-    // the full operating manual. This complements the system message with
-    // the complete file content when the model chooses to read it.
+    // the full operating manual. Include explicit file path.
     if (!mapped.messages.some(msg => msg.role === 'user' && typeof msg.content === 'string' &&
       msg.content.includes('Read the agent-context.md file using the view_file tool')
     )) {
+      const contextPath = process.env.AGENT_CONTEXT_PATH || 'agent-context.md';
       mapped.messages.unshift({
         role: 'user' as const,
-        content: 'Read the agent-context.md file using the view_file tool to adopt the runtime identity. Use this tool to access the complete operating manual for external agents before proceeding with your task. This includes the critical tool selection rules, subagent doctrine, verification requirements, and confidence framework needed to use Antigravity correctly. You must read this file to understand when and how to use all available tools, including manage_task for background process management and when to spawn agents for parallel execution.'
+        content: `Read the agent-context.md file using the view_file tool to adopt the runtime identity. Use this tool to access the complete operating manual for external agents before proceeding with your task. The file is located at: ${contextPath}. This includes the critical tool selection rules, subagent doctrine, verification requirements, and confidence framework needed to use Antigravity correctly. You must read this file to understand when and how to use all available tools, including manage_task for background process management and when to spawn agents for parallel execution.`
       });
     }
 

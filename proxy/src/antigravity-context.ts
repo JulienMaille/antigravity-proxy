@@ -4,23 +4,26 @@ import { fileURLToPath } from 'url';
 import { getWorkspaceContextEnvelope } from './workspace-context.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// __dirname is .../proxy/src when running via tsx, .../proxy/dist when compiled.
-// agent-context.md lives two levels up: .../antigravity/agent-context.md
-const DEFAULT_CONTEXT_PATH = process.env.AGENT_CONTEXT_PATH
-  || path.resolve(__dirname, '..', '..', 'agent-context.md');
 
 export const ANTIGRAVITY_CONTEXT = {
   enabled: process.env.ANTIGRAVITY_CONTEXT !== 'false',
-  path: DEFAULT_CONTEXT_PATH,
-  exists: fs.existsSync(DEFAULT_CONTEXT_PATH),
+
+  /** Resolve the current agent-context.md path dynamically.
+   *  Checks process.env.AGENT_CONTEXT_PATH first (which is set by the
+   *  installer in index.ts:main()), then falls back to the default
+   *  relative path from the proxy directory. */
+  get path(): string {
+    return process.env.AGENT_CONTEXT_PATH
+      || path.resolve(__dirname, '..', '..', 'agent-context.md');
+  },
+
+  get exists(): boolean {
+    return fs.existsSync(this.path);
+  },
 
   get prompt(): string {
-    const workspaceRoot = process.env.WORKSPACE_ROOT || process.cwd();
+    const ctxPath = this.path;
     return `You are operating via the Antigravity Proxy, which routes Antigravity's Google-format API calls to external LLM providers (NVIDIA, OpenRouter, OpenAI, Groq, Anthropic, Zen, etc.).
-
-## Current Workspace
-Your current working directory is: \`${workspaceRoot}\`
-All file operations (list_dir, view_file, write_to_file, etc.) should use absolute paths under this directory unless you have a specific reason to go elsewhere.
 
 ## Core Tool Schemas — Action Required
 
@@ -286,7 +289,7 @@ Spawn agents when ANY of these conditions are met:
 
 ## Workspace Context Reference
 
-${getWorkspaceContextEnvelope(DEFAULT_CONTEXT_PATH)}
+${getWorkspaceContextEnvelope(ctxPath)}
 
 ## Runtime State Authority
 

@@ -50,12 +50,12 @@
     },
     "gpt-oss-120b": {
       "openrouter": "stepfun/step-3.7-flash",
-      "nvidia": "stepfun-ai/step-3.7-flash",
+      "nvidia": "minimaxai/minimax-m3",
       "zen": "nemotron-3-ultra-free"
     },
     "gpt-oss-120b-medium": {
       "openrouter": "stepfun/step-3.7-flash",
-      "nvidia": "stepfun-ai/step-3.7-flash",
+      "nvidia": "minimaxai/minimax-m3",
       "zen": "nemotron-3-ultra-free"
     }
   }

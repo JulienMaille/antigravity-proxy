@@ -18,15 +18,17 @@ import { httpPool } from './http-pool.js';
 import { checkRateLimit, recordRequest, setRateLimitConfig } from './rate-limiter.js';
 import { checkBlocked } from './blocklist.js';
 import { scanLocalProviders } from './local-discovery.js';
+import { installAgentContext } from './install-context.js';
 import { getWorkspaceContextEnvelope, wrapToolResultForContextFile, isWorkspaceContextFile } from './workspace-context.js';
 import type { Content, Tool, GenerationConfig } from './types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 let backendIp = '';
 
-// Set workspace root so antigravity-context.ts can inject it into the system prompt
+// Set workspace root so antigravity-context.ts can inject it into the system prompt.
+// If WORKSPACE_ROOT is not set via env/dashboard, default to the repo root.
+// Users can override this in the dashboard Config tab to point to their actual project.
 if (!process.env.WORKSPACE_ROOT) {
-  // __dirname is .../proxy/src or .../proxy/dist — go up two levels to get the repo root
   process.env.WORKSPACE_ROOT = path.resolve(__dirname, '..', '..');
 }
 
@@ -36,7 +38,7 @@ const INTERCEPT_PATHS = new Set([
   '/v1internal:cascadeStreamGenerateContent',
 ]);
 
-const AGENT_CONTEXT_PATH = process.env.AGENT_CONTEXT_PATH
+let AGENT_CONTEXT_PATH = process.env.AGENT_CONTEXT_PATH
   || (() => {
     // __dirname is .../proxy/src when running via tsx, and .../proxy/dist when compiled.
     // agent-context.md lives at .../antigravity/agent-context.md (two levels up from proxy/).
@@ -137,6 +139,7 @@ const BULK_CONTEXT_TAGS = ['skills', 'plugins', 'user_rules'];
 function stripInlineContext(contents: Content[]): Content[] {
   const filtered: Content[] = [];
   let hasAdapterRef = false;
+
   for (const c of contents) {
     const text = c.parts?.map((p: any) => p.text || '').join('') || '';
     const hasBulkTag = BULK_CONTEXT_TAGS.some(tag => text.includes(`<${tag}>`));
@@ -147,6 +150,7 @@ function stripInlineContext(contents: Content[]): Content[] {
     // Extract only the USER_REQUEST and ADDITIONAL_METADATA if they exist within this bulk content
     const requestMatch = text.match(/(<USER_REQUEST>[\s\S]*?<\/USER_REQUEST>)/);
     const metaMatch = text.match(/(<ADDITIONAL_METADATA>[\s\S]*?<\/ADDITIONAL_METADATA>)/);
+
     if (requestMatch || metaMatch) {
       const kept: string[] = [];
       if (requestMatch) kept.push(requestMatch[1]);
@@ -181,12 +185,33 @@ function stripInlineContext(contents: Content[]): Content[] {
 
 function stripSystemContext(text: string): string {
   if (!text) return '';
-  // Strip massive agent identity context that duplicates what's in agent-context.md
-  const identityMatch = text.match(/<identity>[\s\S]*?<\/identity>/);
-  if (identityMatch && text.length > 2000) {
-    return text.replace(/<identity>[\s\S]*?<\/identity>/, 'See agent-context.md for runtime identity.');
+
+  // Extract workspace path from <user_information> BEFORE stripping.
+  // Antigravity puts the user's project directory here:
+  //   d:\AI_AGENTS\antigravitysdk -> d:/AI_AGENTS/antigravitysdk
+  // Without this, the model doesn't know where its files are.
+  const userInfoMatch = text.match(/<user_information>([\s\S]*?)<\/user_information>/);
+  let workspacePath: string | null = null;
+  if (userInfoMatch) {
+    // Match Windows path: d:\path\to\project or /path/to/project
+    const pathMatch = userInfoMatch[1].match(/([A-Za-z]:\\[\w\\.\-]+|\/[\w/.\-]+)/);
+    if (pathMatch) {
+      workspacePath = pathMatch[1];
+    }
   }
-  return text;
+
+  // Strip the massive identity block and other boilerplate, but keep workspace info
+  let result = text;
+  result = result.replace(/<identity>[\s\S]*?<\/identity>/, 'See agent-context.md for runtime identity.');
+  // Also strip <mcp_servers> since those are handled separately
+  result = result.replace(/<mcp_servers>[\s\S]*?<\/mcp_servers>/, '');
+
+  // Prepend the workspace path so the model always knows where it is
+  if (workspacePath) {
+    result = `## Current Workspace\nYour current working directory is: \`${workspacePath}\`\nAll file operations (list_dir, view_file, write_to_file, run_command, etc.) should use this directory.\n\n${result}`;
+  }
+
+  return result;
 }
 
 /**
@@ -355,9 +380,13 @@ async function handleStreamGenerate(req: http2.Http2ServerRequest, res: http2.Ht
   if (config.contextStripMode !== 'passthrough') {
     wrapContextFileToolResults(contents, AGENT_CONTEXT_PATH);
   }
+  // Antigravity sends "systemInstruction" (camelCase) — try both snake_case and camelCase
+  const rawSystemText = inner.system_instruction?.parts?.[0]?.text
+    || inner.systemInstruction?.parts?.[0]?.text
+    || '';
   const systemInstruction = config.contextStripMode === 'passthrough'
-    ? (inner.system_instruction?.parts?.[0]?.text || '')
-    : stripSystemContext(inner.system_instruction?.parts?.[0]?.text || '');
+    ? rawSystemText
+    : stripSystemContext(rawSystemText);
 
   const bodyStr = body.toString('utf-8');
   logger.info(`>>> INTERCEPTED: ${req.url} model=${model}`, {
@@ -653,6 +682,17 @@ async function handleTlsRequest(req: http2.Http2ServerRequest, res: http2.Http2S
 
 // Main
 async function main(): Promise<void> {
+  // Install agent-context.md to ~/.antigravity/ for stable global access.
+  // This runs every startup but the hash-based marker ensures the file is
+  // only actually copied when the content changes (proxy upgrade).
+  // The env var is set so downstream consumers (antigravity-context.ts,
+  // workspace-context.ts) resolve to the global path.
+  const installedPath = installAgentContext(AGENT_CONTEXT_PATH);
+  if (installedPath) {
+    AGENT_CONTEXT_PATH = installedPath;
+    process.env.AGENT_CONTEXT_PATH = installedPath;
+  }
+
   db.init();
   setRateLimitConfig({ globalMax: config.rateLimitGlobal, providerMax: config.rateLimitProvider, windowMs: config.rateLimitWindow });
   logger.info(`=== Antigravity Proxy (${config.provider}) ===`);

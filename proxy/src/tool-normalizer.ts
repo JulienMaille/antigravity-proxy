@@ -78,6 +78,9 @@ function buildAliasReverseMap(): Map<string, string> {
 
 /**
  * Try to resolve a param name to its canonical form for a given tool.
+ * For dynamic tools (MCP tools), only exact and case-insensitive matching
+ * is used — no fuzzy substring matching, since MCP tool param names are
+ * defined by the server and the model is given those exact names.
  */
 function resolveParamName(toolName: string, paramName: string): string {
   const schema = toolCapabilityRegistry.getSchema(toolName);
@@ -88,7 +91,16 @@ function resolveParamName(toolName: string, paramName: string): string {
 
   const lower = paramName.toLowerCase();
 
-  // Check aliases in the schema
+  // Check if this is a dynamic tool (MCP tools). If so, only do exact
+  // case-insensitive matching — no fuzzy substring matching.
+  if (toolCapabilityRegistry.isDynamicTool(toolName)) {
+    for (const [canonical] of Object.entries(schema.params)) {
+      if (canonical.toLowerCase() === lower) return canonical;
+    }
+    return paramName;
+  }
+
+  // Check aliases in the schema (well-known tools)
   for (const [canonical, def] of Object.entries(schema.params)) {
     if (canonical.toLowerCase() === lower) return canonical;
     for (const alias of def.aliases || []) {

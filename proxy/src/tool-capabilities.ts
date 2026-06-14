@@ -508,14 +508,22 @@ export class ToolCapabilityRegistry {
    */
   resolveName(name: string): string {
     const lower = name.toLowerCase().trim();
-    // Direct match
+
+    // Step 1: Check dynamic tools first (case-insensitive).
+    // MCP tools and other per-request tools are registered here.
+    // They MUST take priority over well-known alias fuzzy matching to
+    // prevent MCP tool names from being hijacked by well-known aliases
+    // that share word segments (e.g. MCP "show_graph" vs alias "show"→view_file).
+    for (const [dynName] of this.dynamicTools) {
+      if (dynName.toLowerCase() === lower) return dynName;
+    }
+
+    // Step 2: Direct alias/well-known match
     if (this.aliasMap.has(lower)) return this.aliasMap.get(lower)!;
     if (this.wellKnown.has(name)) return name;
-    if (this.dynamicTools.has(name)) return name;
 
-    // Fuzzy match: check if any alias is a complete segment match
-    // e.g. "manage" in "manage_task" matches, but "manage" in "manage_subagents" does NOT
-    // because "manage_subagents" has its own canonical name.
+    // Step 3: Fuzzy match — only for well-known tools.
+    // Dynamic tools were already checked above and won't reach here.
     const segments = lower.split(/[_-]/);
     for (const [alias, canonical] of this.aliasMap) {
       if (alias.length < 4) continue; // Too short — skip to avoid noise
@@ -523,7 +531,6 @@ export class ToolCapabilityRegistry {
       if (segments.some(s => s === alias)) return canonical;
     }
     // Fallback: check if the entire name is contained in a canonical name or vice versa
-    // Only for names that don't match any existing canonical
     for (const [canonicalName] of this.wellKnown) {
       const cl = canonicalName.toLowerCase();
       if (lower === cl) return canonicalName;
@@ -538,9 +545,11 @@ export class ToolCapabilityRegistry {
 
   /**
    * Get the schema for a tool by its canonical name.
+   * Dynamic tools (MCP tools, per-request tools) are checked FIRST
+   * so they take priority over well-known tools with the same name.
    */
   getSchema(name: string): ToolSchema | undefined {
-    return this.wellKnown.get(name) || this.dynamicTools.get(name);
+    return this.dynamicTools.get(name) || this.wellKnown.get(name);
   }
 
   /**
@@ -587,6 +596,17 @@ export class ToolCapabilityRegistry {
   hasTool(name: string): boolean {
     const canonical = this.resolveName(name);
     return this.wellKnown.has(canonical) || this.dynamicTools.has(canonical);
+  }
+
+  /**
+   * Check if a tool name corresponds to a dynamic (per-request, e.g. MCP) tool.
+   * Used by the normalizer to decide whether to apply fuzzy param matching.
+   */
+  isDynamicTool(name: string): boolean {
+    for (const [dynName] of this.dynamicTools) {
+      if (dynName.toLowerCase() === name.toLowerCase().trim()) return true;
+    }
+    return false;
   }
 }
 
