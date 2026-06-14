@@ -33,7 +33,13 @@ jobs:
           cache-dependency-path: proxy/package-lock.json
 
       - name: Install dependencies
+        if: runner.os != 'Windows'
         run: npm ci
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: npm ci --ignore-scripts
+        continue-on-error: false
 
       - name: Type-check
         run: npm run typecheck
