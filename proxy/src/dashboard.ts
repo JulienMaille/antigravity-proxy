@@ -530,7 +530,7 @@ export function createDashboardHandler(): (req: http.IncomingMessage, res: http.
     if (url.pathname === '/api/provider-models' && method === 'GET') {
       const provider = (url.searchParams.get('provider') || '').trim();
       if (!provider) {
-        const all = ['nvidia','openrouter','openai','groq','anthropic','google','zen','ollama','vllm','lmstudio']
+        const all = ['opencode','nvidia','openrouter','openai','groq','anthropic','google','zen','ollama','vllm','lmstudio']
           .map(p => ({ provider: p, ...(getCachedProviderModels(p) || { models: [], fetchedAt: 0, error: 'not fetched' }) }));
         jsonResp(res, { providers: all });
         return;
