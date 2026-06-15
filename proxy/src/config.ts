@@ -73,7 +73,7 @@ function createConfig() {
     dashboardUser: process.env.DASHBOARD_USER || '',
     dashboardPassword: process.env.DASHBOARD_PASSWORD || '',
     failoverWebhookUrl: process.env.FAILOVER_WEBHOOK_URL || '',
-    contextStripMode: (process.env.CONTEXT_STRIP_MODE || 'strip') as 'strip' | 'passthrough',
+    contextStripMode: (process.env.CONTEXT_STRIP_MODE || 'passthrough') as 'strip' | 'passthrough',
     providerPriority: parsePriority(),
     providers: buildProviders(parsePriority()),
     get localProviders(): ProviderConfig[] { return localProviders; },

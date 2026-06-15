@@ -92,7 +92,7 @@ New providers implement `IProviderPlugin` interface in `src/plugins/`, register 
 - **Dashboard is raw HTML** (`proxy/dashboard/index.html`) — no build step, edit directly and hard-refresh browser
 - **Config hot-reloads**: `.env` changes (API keys, priority, ports) take effect without restart
 - **`agent-context.md`** at repo root is injected into every request as system prompt for external models — contains Antigravity tool schemas and instructions
-- **`CONTEXT_STRIP_MODE`**: `strip` (default) removes context tags; `passthrough` forwards everything
+- **`CONTEXT_STRIP_MODE`**: `passthrough` (default) forwards full native Antigravity context; `strip` removes context tags and injects compact reference
 - **Model overrides**: `_provider_models` in `models.json` overrides global alias resolution for specific providers
 - **Provider priority**: First provider with valid API key wins. Set `ANTIGRAVITY_PROVIDER_PRIORITY` to reorder.
 

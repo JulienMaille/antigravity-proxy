@@ -175,9 +175,11 @@ The proxy intercepts three specific Antigravity API paths:
 
 All other traffic is forwarded transparently to Google's backend.
 
-### Context Stripping
+### Context Mode
 
-Antigravity sends massive inline context with every request (~4000+ tokens of skill descriptions, plugin lists, user rules). The proxy strips this and injects a compact reference to `agent-context.md`, which the model reads once to adopt the runtime identity.
+By default (`CONTEXT_STRIP_MODE=passthrough`), the proxy forwards the full native Antigravity context to external models — skills, plugins, identity, subagents, user rules, and tool definitions all pass through unchanged. This gives external models the same context that native Gemini receives.
+
+In `strip` mode (`CONTEXT_STRIP_MODE=strip`), bulk context tags are removed and a compact reference is injected. This is a fallback for models that can't handle the XML-like context format.
 
 ### Model Resolution
 

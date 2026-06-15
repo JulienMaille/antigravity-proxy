@@ -351,7 +351,7 @@ FAILOVER_WEBHOOK_URL=https://hooks.example.com/webhook
 WORKSPACE_CONTEXT_ENVELOPE=strict   # off | loose | strict
 
 # Inline context strip mode
-CONTEXT_STRIP_MODE=strip            # strip | passthrough
+CONTEXT_STRIP_MODE=passthrough       # passthrough (default) | strip
 ```
 
 ---

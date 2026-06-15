@@ -6,6 +6,32 @@ Dates are UTC. Commit hashes are the actual merge commits on `main`.
 
 ---
 
+## [latest] — 2026-06-16
+
+### Changed
+
+- **`CONTEXT_STRIP_MODE` default changed from `strip` to `passthrough`** — external models now receive the full native Antigravity context (skills, plugins, identity, subagents, user rules) by default. This was validated with MiMo-v2.5: 18/20 tools working correctly with passthrough, matching native Gemini behavior.
+
+- **Passthrough mode now truly forwards context** — fixed three critical bugs:
+  - `engine.ts` was injecting ~4220 tokens of ANTIGRAVITY context even in passthrough mode (duplication)
+  - `engine.ts` was injecting "Read agent-context.md" prompt even in passthrough mode
+  - `GoogleAdapter` was dropping the system instruction entirely (`if (m.role === 'system') continue`)
+
+### Fixed
+
+- **System instruction passthrough** — Google adapter now forwards system instruction as native Gemini `system_instruction` field instead of dropping it
+- **Adapter interface** — Added `system?: string` parameter to `ModelAdapter.stream()` so system instruction flows through the entire pipeline
+- **OpenAI/Anthropic adapters** — Accept and forward system instruction as system message when not already present
+
+### Context Architecture
+
+The external context (`agent-context.md` + `antigravity-context.ts`) was built as a workaround when passthrough didn't work. Now that passthrough forwards the full native context correctly:
+- **Passthrough mode** (default): Full native context forwarded — no injection, no stripping, no file reads needed
+- **Strip mode** (fallback): Bulk context stripped, compact reference injected — only for models that can't handle XML-like tags
+- Future: Token compression to reduce the ~28K token context while maintaining full tool coverage
+
+---
+
 ## [b45f803] — 2026-06-11
 
 ### Added
