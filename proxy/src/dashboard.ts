@@ -25,7 +25,8 @@ import {
 } from './reasoning-effort.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dashboardHtml = path.resolve(__dirname, '..', 'dashboard', 'index.html');
+const dashboardHtml = path.resolve(__dirname, '..', 'dashboard', 'dist', 'index.html');
+const dashboardAssets = path.resolve(__dirname, '..', 'dashboard', 'dist', 'assets');
 const loginHtml = path.resolve(__dirname, '..', 'dashboard', 'login.html');
 const logDir = path.resolve(__dirname, '..', 'logs');
 
@@ -442,7 +443,22 @@ export function createDashboardHandler(): (req: http.IncomingMessage, res: http.
         res.end(fs.readFileSync(dashboardHtml, 'utf-8'));
       } else {
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end('<h1>Dashboard</h1><p>Build dashboard/index.html</p>');
+        res.end('<h1>Dashboard</h1><p>Build dashboard: cd dashboard && npm run build</p>');
+      }
+      return;
+    }
+
+    // Serve dashboard static assets (JS, CSS from Vite build)
+    if (url.pathname.startsWith('/assets/') && method === 'GET') {
+      const assetPath = path.join(dashboardAssets, url.pathname.replace('/assets/', ''));
+      if (fs.existsSync(assetPath)) {
+        const ext = path.extname(assetPath);
+        const types: Record<string, string> = { '.js': 'application/javascript', '.css': 'text/css', '.html': 'text/html' };
+        res.writeHead(200, { 'content-type': types[ext] || 'application/octet-stream' });
+        res.end(fs.readFileSync(assetPath));
+      } else {
+        res.writeHead(404);
+        res.end('Not found');
       }
       return;
     }
