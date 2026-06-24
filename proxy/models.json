@@ -4,13 +4,12 @@
     "opencode",
     "nvidia",
     "openrouter",
-    "google",
-    "opencode-go"
+    "google"
   ],
   "_title_model": "gpt-oss-120b-medium",
   "_fallback_model": "",
-  "_default_provider": "nvidia",
-  "_default_model": "stepfun-ai/step-3.7-flash",
+  "_default_provider": "zen",
+  "_default_model": "mimo-v2.5-free",
   "deepseek-v4-flash-free": "deepseek-v4-flash-free",
   "big-pickle": "big-pickle",
   "minimax-m3-free": "minimax-m3-free",
@@ -119,8 +118,7 @@
       "openrouter": "stepfun/step-3.7-flash"
     },
     "default": {
-      "opencode-go": "deepseek-v4-flash",
-      "nvidia": "stepfun-ai/step-3.7-flash"
+      "zen": "mimo-v2.5-free"
     }
   }
 }

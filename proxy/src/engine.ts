@@ -191,9 +191,7 @@ export async function* streamResponse(
 ): AsyncGenerator<StreamResponseChunk> {
   const model = modelId || 'default';
   const r = getRouter();
-  const providerIds = modelResolver.routingMode === 'per-model-per-provider'
-    ? modelResolver.globalProviderPriority
-    : config.providerPriority;
+  const providerIds = config.providerPriority;
 
   logger.info(`Intercept: ${model}`, {
     messageCount: mapped.messages.length,
@@ -290,9 +288,7 @@ export async function generateResponse(
 ): Promise<{ text: string; finishReason: string | null }> {
   const model = modelId || 'default';
   const r = getRouter();
-  const providerIds = modelResolver.routingMode === 'per-model-per-provider'
-    ? modelResolver.globalProviderPriority
-    : config.providerPriority;
+  const providerIds = config.providerPriority;
 
   try {
     // Phase 2: Inject Antigravity runtime identity if this is the Antigravity agent.

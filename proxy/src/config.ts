@@ -57,7 +57,7 @@ function createConfig() {
   let localProviders: ProviderConfig[] = [];
 
   return {
-    legacyProvider: (process.env.PROVIDER || 'openrouter') as Provider,
+    legacyProvider: (process.env.PROVIDER || parsePriority()[0] || 'openrouter') as Provider,
     nvidiaApiKey: process.env.NVIDIA_API_KEY || '',
     nvidiaBaseUrl: process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1',
     openrouterApiKey: process.env.OPENROUTER_API_KEY || '',
@@ -92,7 +92,14 @@ function createConfig() {
       this.providers = buildProviders(this.providerPriority, localProviders);
     },
     get isConfigured(): boolean {
-      return this.providers.some((p: ProviderConfig) => !!p.apiKey || p.id === 'opencode');
+      return this.providers.some((p: ProviderConfig) => {
+        if (p.id === 'opencode') return true;
+        if (!p.apiKey) return false;
+        const key = p.apiKey.trim();
+        if (key.length < 10) return false;
+        if (/\.\.\.$/.test(key)) return false;
+        return true;
+      });
     },
     get provider(): string {
       return this.legacyProvider;
@@ -109,7 +116,7 @@ function createConfig() {
     },
     reload(): void {
       parseEnvFile();
-      this.legacyProvider = (process.env.PROVIDER || 'openrouter') as Provider;
+      this.legacyProvider = (process.env.PROVIDER || parsePriority()[0] || 'openrouter') as Provider;
       this.nvidiaApiKey = process.env.NVIDIA_API_KEY || '';
       this.nvidiaBaseUrl = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
       this.openrouterApiKey = process.env.OPENROUTER_API_KEY || '';
